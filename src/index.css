@@ -1,0 +1,15 @@
+/* Don't make every element a flex container — that breaks almost every component.
+   Target the page root instead. */
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  font-size: larger;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* Basic box-sizing reset for all elements (safe to keep) */
+* {
+  box-sizing: border-box;
+}
