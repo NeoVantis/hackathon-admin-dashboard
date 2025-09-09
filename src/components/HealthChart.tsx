@@ -53,7 +53,7 @@ const HealthChart: React.FC = () => {
     const fetchData = async () => {
       try {
         // Use environment variable for API URL
-        const apiUrl = import.meta.env.VITE_HEALTH_API_URL || '/api/health';
+        const apiUrl = import.meta.env.VITE_HEALTH_API_URL;
         
         const response = await fetch(apiUrl, {
           method: 'GET',

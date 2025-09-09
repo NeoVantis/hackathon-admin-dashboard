@@ -19,6 +19,12 @@ const services: ServiceTab[] = [
     icon: '🏥',
     description: 'System health and performance metrics'
   },
+  {
+    id: 'notifications',
+    name: 'Notifications',
+    icon: '🔔',
+    description: 'Email notifications and delivery status'
+  },
   // Future services can be added here
   // {
   //   id: 'logs',

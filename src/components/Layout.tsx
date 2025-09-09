@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import Sidebar from './Sidebar';
 import HealthChart from './HealthChart';
+import NotificationsChart from './NotificationsChart';
 
 const Layout: React.FC = () => {
   const [activeTab, setActiveTab] = useState('health');
@@ -9,6 +10,8 @@ const Layout: React.FC = () => {
     switch (activeTab) {
       case 'health':
         return <HealthChart />;
+      case 'notifications':
+        return <NotificationsChart />;
       default:
         return (
           <div style={{
