@@ -1,11 +1,8 @@
 
-function App() {
+import Layout from './components/Layout';
 
-  return (
-    <>
-      Admin Dashboard
-    </>
-  )
+function App() {
+  return <Layout />;
 }
 
-export default App
+export default App;

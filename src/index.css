@@ -1,12 +1,8 @@
-/* Don't make every element a flex container — that breaks almost every component.
-   Target the page root instead. */
+/* Reset styles for proper layout */
 html, body, #root {
-  height: 100%;
   margin: 0;
-  font-size: larger;
-  display: flex;
-  justify-content: center;
-  align-items: center;
+  padding: 0;
+  font-family: Arial, sans-serif;
 }
 
 /* Basic box-sizing reset for all elements (safe to keep) */
