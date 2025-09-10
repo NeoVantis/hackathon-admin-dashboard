@@ -1,4 +1,13 @@
-// Auth API Service for NeoVantis AuthService integration
+// Auth API Service for NeoVantis Admin API
+
+export interface Admin {
+  id: string;
+  name: string;
+  username: string;
+  role: number; // 0 = Super Admin, 1 = Admin
+  createdAt: string;
+  updatedAt: string;
+}
 
 export interface LoginRequest {
   username: string;
@@ -6,41 +15,32 @@ export interface LoginRequest {
 }
 
 export interface LoginResponse {
-  success: boolean;
-  message: string;
-  token?: string;
-  admin?: {
-    id: string;
-    username: string;
-    role: string;
-    name?: string;
-    permissions?: string[];
-  };
+  access_token: string;
+  userRole: number;
 }
 
-export interface ValidateTokenResponse {
-  success: boolean;
-  message: string;
-  admin?: {
-    id: string;
-    username: string;
-    role: string;
-    name?: string;
-    permissions?: string[];
-  };
+export interface AdminProfileResponse {
+  admin: Admin;
+}
+
+export interface CreateAdminRequest {
+  name: string;
+  username: string;
+  password: string;
+  role: number;
 }
 
 export interface ApiError {
-  success: false;
   message: string;
-  error?: string;
+  error: string;
+  statusCode: number;
 }
 
 class AuthApiService {
   private baseUrl: string;
 
   constructor() {
-    this.baseUrl = import.meta.env.VITE_AUTH_API_BASE_URL || 'http://localhost:3000/api/v1';
+    this.baseUrl = '/api/v1'; // Use relative path - will be proxied by Vite
   }
 
   /**
@@ -76,11 +76,76 @@ class AuthApiService {
   }
 
   /**
-   * Validate JWT token
+   * Get current admin profile
    */
-  async validateToken(token: string): Promise<ValidateTokenResponse> {
+  async getCurrentAdmin(token: string): Promise<Admin> {
     try {
-      const response = await fetch(`${this.baseUrl}/admin/validate`, {
+      const response = await fetch(`${this.baseUrl}/admin/me`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      const data: AdminProfileResponse = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.admin ? 'Invalid admin token' : 'Admin access token required');
+      }
+
+      return data.admin;
+    } catch (error) {
+      console.error('❌ Get Admin Profile API Error:', error);
+      
+      if (error instanceof Error) {
+        throw new Error(`Failed to get admin info: ${error.message}`);
+      }
+      
+      throw new Error('Failed to get admin info: Unknown error occurred');
+    }
+  }
+
+  /**
+   * Create new admin (Super Admin only)
+   */
+  async createAdmin(token: string, adminData: CreateAdminRequest): Promise<Admin> {
+    try {
+      const response = await fetch(`${this.baseUrl}/admin/create`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify(adminData),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || `HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      return data;
+    } catch (error) {
+      console.error('❌ Create Admin API Error:', error);
+      
+      if (error instanceof Error) {
+        throw new Error(`Failed to create admin: ${error.message}`);
+      }
+      
+      throw new Error('Failed to create admin: Unknown error occurred');
+    }
+  }
+
+  /**
+   * Get all admins (Super Admin only)
+   */
+  async getAllAdmins(token: string): Promise<Admin[]> {
+    try {
+      const response = await fetch(`${this.baseUrl}/admin/list`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -97,73 +162,26 @@ class AuthApiService {
 
       return data;
     } catch (error) {
-      console.error('❌ Token Validation API Error:', error);
+      console.error('❌ Get All Admins API Error:', error);
       
       if (error instanceof Error) {
-        throw new Error(`Token validation failed: ${error.message}`);
+        throw new Error(`Failed to get admin list: ${error.message}`);
       }
       
-      throw new Error('Token validation failed: Unknown error occurred');
+      throw new Error('Failed to get admin list: Unknown error occurred');
     }
   }
 
   /**
-   * Logout admin (optional - mainly for token cleanup)
+   * Validate token by trying to get current admin
    */
-  async logout(token: string): Promise<{ success: boolean; message: string }> {
+  async validateToken(token: string): Promise<{ valid: boolean; admin?: Admin }> {
     try {
-      const response = await fetch(`${this.baseUrl}/admin/logout`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        // Don't throw error for logout - just log it
-        console.warn('⚠️ Logout API Warning:', data.message || response.statusText);
-      }
-
-      return data || { success: true, message: 'Logged out successfully' };
+      const admin = await this.getCurrentAdmin(token);
+      return { valid: true, admin };
     } catch (error) {
-      console.warn('⚠️ Logout API Warning:', error);
-      
-      // Return success even if logout fails - we'll clear local storage anyway
-      return { success: true, message: 'Logged out locally' };
+      return { valid: false };
     }
-  }
-
-  /**
-   * Get protected data with authentication
-   */
-  async makeAuthenticatedRequest<T = unknown>(endpoint: string, options: RequestInit = {}): Promise<T> {
-    const token = localStorage.getItem('authToken');
-    
-    if (!token) {
-      throw new Error('No authentication token available');
-    }
-
-    const response = await fetch(`${this.baseUrl}${endpoint}`, {
-      ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        'Authorization': `Bearer ${token}`,
-        ...options.headers,
-      },
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(data.message || `HTTP ${response.status}: ${response.statusText}`);
-    }
-
-    return data;
   }
 }
 

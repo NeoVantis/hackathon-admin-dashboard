@@ -1,12 +1,8 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
 import { AuthContext } from './AuthContextDefinition';
 import type { Admin, AuthContextType } from './AuthContextDefinition';
 import { authApiService } from '../services/authApi';
-
-// Storage keys
-const TOKEN_KEY = 'authToken';
-const ADMIN_KEY = 'adminData';
 
 // Auth Provider Props
 interface AuthProviderProps {
@@ -16,10 +12,11 @@ interface AuthProviderProps {
 // Auth Provider Component
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [admin, setAdmin] = useState<Admin | null>(null);
+  const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const isAuthenticated = admin !== null;
+  const isAuthenticated = admin !== null && token !== null;
 
   /**
    * Clear error state
@@ -29,41 +26,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   /**
-   * Save admin data and token to localStorage
+   * Clear auth state (session only - no persistence)
    */
-  const saveToStorage = (token: string, adminData: Admin) => {
-    localStorage.setItem(TOKEN_KEY, token);
-    localStorage.setItem(ADMIN_KEY, JSON.stringify(adminData));
+  const clearAuthState = () => {
+    setAdmin(null);
+    setToken(null);
+    setError(null);
   };
-
-  /**
-   * Clear admin data and token from localStorage
-   */
-  const clearStorage = () => {
-    localStorage.removeItem(TOKEN_KEY);
-    localStorage.removeItem(ADMIN_KEY);
-  };
-
-  /**
-   * Load admin data from localStorage
-   */
-  const loadFromStorage = useCallback((): { token: string | null; adminData: Admin | null } => {
-    try {
-      const token = localStorage.getItem(TOKEN_KEY);
-      const adminDataJson = localStorage.getItem(ADMIN_KEY);
-      
-      if (!token || !adminDataJson) {
-        return { token: null, adminData: null };
-      }
-
-      const adminData = JSON.parse(adminDataJson) as Admin;
-      return { token, adminData };
-    } catch (error) {
-      console.error('❌ Error loading auth data from storage:', error);
-      clearStorage();
-      return { token: null, adminData: null };
-    }
-  }, []);
 
   /**
    * Login function
@@ -75,21 +44,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       const response = await authApiService.login({ username, password });
 
-      if (!response.success || !response.token || !response.admin) {
-        throw new Error(response.message || 'Login failed - invalid response');
-      }
+      // Get admin profile with the token
+      const adminProfile = await authApiService.getCurrentAdmin(response.access_token);
 
-      // Save to state and storage
-      setAdmin(response.admin);
-      saveToStorage(response.token, response.admin);
+      // Save to state only (session storage)
+      setAdmin(adminProfile);
+      setToken(response.access_token);
 
-      console.log('✅ Login successful:', response.admin.username);
+      console.log('✅ Login successful:', adminProfile.username, 'Role:', adminProfile.role);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Login failed';
       console.error('❌ Login error:', errorMessage);
       setError(errorMessage);
-      setAdmin(null);
-      clearStorage();
+      clearAuthState();
       throw error; // Re-throw so component can handle it
     } finally {
       setIsLoading(false);
@@ -103,88 +70,49 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       setIsLoading(true);
       
-      const token = localStorage.getItem(TOKEN_KEY);
-      if (token) {
-        // Try to logout on server (don't wait for it)
-        authApiService.logout(token).catch(err => 
-          console.warn('⚠️ Server logout failed:', err)
-        );
-      }
-
-      // Clear local state and storage
-      setAdmin(null);
-      clearStorage();
-      setError(null);
+      // Clear local state (no server logout in your API)
+      clearAuthState();
 
       console.log('✅ Logout successful');
     } catch (error) {
       console.error('❌ Logout error:', error);
-      // Still clear local state even if server logout fails
-      setAdmin(null);
-      clearStorage();
-      setError(null);
+      // Still clear local state
+      clearAuthState();
     } finally {
       setIsLoading(false);
     }
   };
-
-  /**
-   * Validate existing token on app startup
-   */
-  const validateExistingToken = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      
-      const { token, adminData } = loadFromStorage();
-      
-      if (!token || !adminData) {
-        setIsLoading(false);
-        return;
-      }
-
-      // Validate token with server
-      const response = await authApiService.validateToken(token);
-      
-      if (response.success && response.admin) {
-        setAdmin(response.admin);
-        // Update stored admin data in case it changed
-        saveToStorage(token, response.admin);
-        console.log('✅ Token validation successful:', response.admin.username);
-      } else {
-        throw new Error(response.message || 'Token validation failed');
-      }
-    } catch (error) {
-      console.warn('⚠️ Token validation failed:', error);
-      // Clear invalid token and data
-      setAdmin(null);
-      clearStorage();
-      setError(null); // Don't show error for expired tokens
-    } finally {
-      setIsLoading(false);
-    }
-  }, [loadFromStorage]);
 
   /**
    * Role-based access helper functions
    */
-  const hasRole = (role: string): boolean => {
+  const hasRole = (role: number): boolean => {
     return admin?.role === role;
   };
 
-  const hasPermission = (permission: string): boolean => {
-    return admin?.permissions?.includes(permission) || false;
+  const isSuperAdmin = (): boolean => {
+    return admin?.role === 0; // Super Admin role is 0
   };
 
-  const isSuperAdmin = (): boolean => {
-    return admin?.role === 'super_admin' || admin?.role === 'superadmin';
+  const isRegularAdmin = (): boolean => {
+    return admin?.role === 1; // Regular Admin role is 1
   };
 
   /**
-   * Initialize auth state on mount
+   * Get role name for display
+   */
+  const getRoleName = (): string => {
+    if (!admin) return 'Guest';
+    return admin.role === 0 ? 'Super Admin' : 'Admin';
+  };
+
+  /**
+   * Initialize auth state on mount (no persistence)
    */
   useEffect(() => {
-    validateExistingToken();
-  }, [validateExistingToken]);
+    // No token persistence - user needs to login after refresh
+    setIsLoading(false);
+  }, []);
 
   const contextValue: AuthContextType = {
     // State
@@ -192,6 +120,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     isAuthenticated,
     isLoading,
     error,
+    token,
     
     // Actions
     login,
@@ -200,8 +129,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     
     // Role helpers
     hasRole,
-    hasPermission,
     isSuperAdmin,
+    isRegularAdmin,
+    getRoleName,
   };
 
   return (

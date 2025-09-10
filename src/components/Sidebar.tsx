@@ -42,7 +42,7 @@ const services: ServiceTab[] = [
 ];
 
 const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange }) => {
-  const { admin, logout, isSuperAdmin } = useAuth();
+  const { admin, logout, isSuperAdmin, getRoleName } = useAuth();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const handleLogout = async () => {
@@ -213,7 +213,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange }) => {
             textTransform: 'uppercase',
             fontWeight: 'bold'
           }}>
-            {admin?.role || 'No Role'}
+            {getRoleName()}
           </div>
         </div>
 

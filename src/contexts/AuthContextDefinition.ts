@@ -1,12 +1,13 @@
 import { createContext } from 'react';
 
-// Types
+// Types matching the API response
 export interface Admin {
   id: string;
+  name: string;
   username: string;
-  role: string;
-  name?: string;
-  permissions?: string[];
+  role: number; // 0 = Super Admin, 1 = Admin
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface AuthContextType {
@@ -15,6 +16,7 @@ export interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   error: string | null;
+  token: string | null;
   
   // Actions
   login: (username: string, password: string) => Promise<void>;
@@ -22,9 +24,10 @@ export interface AuthContextType {
   clearError: () => void;
   
   // Role-based access helpers
-  hasRole: (role: string) => boolean;
-  hasPermission: (permission: string) => boolean;
+  hasRole: (role: number) => boolean;
   isSuperAdmin: () => boolean;
+  isRegularAdmin: () => boolean;
+  getRoleName: () => string;
 }
 
 // Create context
