@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { useAuth } from '../hooks/useAuth';
 
 interface SidebarProps {
   activeTab: string;
@@ -41,6 +42,38 @@ const services: ServiceTab[] = [
 ];
 
 const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange }) => {
+  const { admin, logout, isSuperAdmin } = useAuth();
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+  const handleLogout = async () => {
+    try {
+      setIsLoggingOut(true);
+      await logout();
+    } catch (error) {
+      console.error('Logout error:', error);
+    } finally {
+      setIsLoggingOut(false);
+    }
+  };
+
+  // Get available services based on user role
+  const getAvailableServices = () => {
+    const baseServices = [...services];
+    
+    // Add super admin only services
+    if (isSuperAdmin()) {
+      baseServices.push({
+        id: 'users',
+        name: 'User Management',
+        icon: '👥',
+        description: 'Manage admin users and permissions'
+      });
+    }
+    
+    return baseServices;
+  };
+
+  const availableServices = getAvailableServices();
   return (
     <div style={{
       width: '280px',
@@ -92,7 +125,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange }) => {
           Services
         </div>
         
-        {services.map((service) => (
+        {availableServices.map((service) => (
           <button
             key={service.id}
             onClick={() => onTabChange(service.id)}
@@ -146,16 +179,94 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange }) => {
         ))}
       </nav>
 
-      {/* Footer */}
+      {/* User Info & Logout */}
       <div style={{
         padding: '20px',
         borderTop: '1px solid #34495e',
         backgroundColor: '#1a252f'
       }}>
+        {/* User Info */}
+        <div style={{
+          marginBottom: '15px',
+          padding: '10px',
+          backgroundColor: '#2c3e50',
+          borderRadius: '4px'
+        }}>
+          <div style={{
+            fontSize: '12px',
+            color: '#95a5a6',
+            marginBottom: '4px'
+          }}>
+            Logged in as
+          </div>
+          <div style={{
+            fontSize: '14px',
+            color: '#ecf0f1',
+            fontWeight: 'bold',
+            marginBottom: '2px'
+          }}>
+            {admin?.email || 'Unknown User'}
+          </div>
+          <div style={{
+            fontSize: '11px',
+            color: '#3498db',
+            textTransform: 'uppercase',
+            fontWeight: 'bold'
+          }}>
+            {admin?.role || 'No Role'}
+          </div>
+        </div>
+
+        {/* Logout Button */}
+        <button
+          onClick={handleLogout}
+          disabled={isLoggingOut}
+          style={{
+            width: '100%',
+            padding: '10px',
+            backgroundColor: isLoggingOut ? '#95a5a6' : '#e74c3c',
+            color: 'white',
+            border: 'none',
+            borderRadius: '4px',
+            fontSize: '12px',
+            fontWeight: 'bold',
+            cursor: isLoggingOut ? 'not-allowed' : 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '6px',
+            transition: 'background-color 0.2s ease'
+          }}
+          onMouseEnter={(e) => {
+            if (!isLoggingOut) {
+              e.currentTarget.style.backgroundColor = '#c0392b';
+            }
+          }}
+          onMouseLeave={(e) => {
+            if (!isLoggingOut) {
+              e.currentTarget.style.backgroundColor = '#e74c3c';
+            }
+          }}
+        >
+          {isLoggingOut ? (
+            <>
+              <span>🔄</span>
+              <span>Logging out...</span>
+            </>
+          ) : (
+            <>
+              <span>🚪</span>
+              <span>Logout</span>
+            </>
+          )}
+        </button>
+
+        {/* Footer */}
         <div style={{
           fontSize: '11px',
           color: '#95a5a6',
-          textAlign: 'center'
+          textAlign: 'center',
+          marginTop: '15px'
         }}>
           <div>Version 1.0.0</div>
           <div style={{ marginTop: '5px' }}>

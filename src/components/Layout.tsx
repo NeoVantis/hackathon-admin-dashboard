@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import Sidebar from './Sidebar';
 import HealthMonitor from './HealthMonitor';
 import NotificationsChart from './NotificationsChart';
+import UserManagement from './UserManagement';
 
 const Layout: React.FC = () => {
   const [activeTab, setActiveTab] = useState('health');
@@ -12,6 +13,8 @@ const Layout: React.FC = () => {
         return <HealthMonitor />;
       case 'notifications':
         return <NotificationsChart />;
+      case 'users':
+        return <UserManagement />;
       default:
         return (
           <div style={{
