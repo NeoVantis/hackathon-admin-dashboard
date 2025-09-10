@@ -10,18 +10,6 @@ interface Notification {
   sentAt: string | null;
 }
 
-interface NotificationResponse {
-  success: boolean;
-  message: string;
-  data: {
-    notifications: Notification[];
-    total: number;
-    page: number;
-    limit: number;
-    totalPages: number;
-  };
-}
-
 const NotificationsChart: React.FC = () => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
@@ -42,15 +30,22 @@ const NotificationsChart: React.FC = () => {
       setLoading(true);
       setError(null);
       
-      const response = await fetch(
-        `${import.meta.env.VITE_NOTIFICATIONS_API_URL}?page=${page}&limit=${limit}`
-      );
+      const apiUrl = `${import.meta.env.VITE_NOTIFICATIONS_API_URL || '/api/notifications'}?page=${page}&limit=${limit}`;
+      
+      // Simple fetch without security validation
+      const response = await fetch(apiUrl, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        }
+      });
       
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
       
-      const data: NotificationResponse = await response.json();
+      const data = await response.json();
       
       if (data.success) {
         setNotifications(data.data.notifications);
@@ -61,7 +56,9 @@ const NotificationsChart: React.FC = () => {
         throw new Error(data.message || 'Failed to fetch notifications');
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
+      // Simple error message
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
+      setError(errorMessage);
       console.error('Error fetching notifications:', err);
     } finally {
       setLoading(false);
@@ -140,11 +137,6 @@ const NotificationsChart: React.FC = () => {
       {status}
     </span>
   );
-
-  const truncateContent = (content: string, maxLength: number = 150) => {
-    if (content.length <= maxLength) return content;
-    return content.substring(0, maxLength) + '...';
-  };
 
   const formatId = (id: string) => {
     return id.substring(0, 12) + '...';
@@ -738,15 +730,15 @@ const NotificationsChart: React.FC = () => {
                           e.currentTarget.style.borderColor = '#e0e0e0';
                         }}
                       >
-                        {truncateContent(notification.content)}
-                        {notification.content.length > 150 && (
+                        {notification.content}
+                        {notification.content.length > 10000 && (
                           <div style={{
                             fontSize: '11px',
                             color: '#3498db',
                             marginTop: '4px',
                             fontWeight: 'bold'
                           }}>
-                            Click to view more...
+                            Content truncated - click to view more...
                           </div>
                         )}
                       </div>

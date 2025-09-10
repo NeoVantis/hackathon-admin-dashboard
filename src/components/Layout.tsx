@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import Sidebar from './Sidebar';
-import HealthChart from './HealthChart';
+import HealthMonitor from './HealthMonitor';
 import NotificationsChart from './NotificationsChart';
 
 const Layout: React.FC = () => {
@@ -9,7 +9,7 @@ const Layout: React.FC = () => {
   const renderContent = () => {
     switch (activeTab) {
       case 'health':
-        return <HealthChart />;
+        return <HealthMonitor />;
       case 'notifications':
         return <NotificationsChart />;
       default:

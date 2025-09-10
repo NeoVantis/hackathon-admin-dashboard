@@ -28,6 +28,25 @@ interface SystemData {
     status: string;
     responseTime: number;
   };
+  queue: {
+    status: string;
+    jobs: {
+      waiting: number;
+      active: number;
+      completed: number;
+      failed: number;
+      delayed: number;
+    };
+  };
+  email: {
+    status: string;
+    responseTime: number;
+    smtp: {
+      host: string;
+      port: string;
+      secure: string;
+    };
+  };
   network: {
     hostname: string;
     platform: string;
@@ -51,8 +70,8 @@ const HealthChart: React.FC = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Use environment variable for API URL
-        const apiUrl = import.meta.env.VITE_HEALTH_API_URL || '/api/health';
+        // Use the notification service endpoint from environment variable
+        const apiUrl = import.meta.env.VITE_NOTIFICATION_HEALTH_API_URL || 'http://localhost:3000/api/v1/health';
         
         // Simple fetch without security validation
         const response = await fetch(apiUrl, {
@@ -112,7 +131,7 @@ const HealthChart: React.FC = () => {
     
     const fetchNewDataPoint = async () => {
       try {
-        const apiUrl = import.meta.env.VITE_HEALTH_API_URL || '/api/health';
+        const apiUrl = import.meta.env.VITE_NOTIFICATION_HEALTH_API_URL || 'http://localhost:3000/api/v1/health';
         
         // Simple fetch
         const response = await fetch(apiUrl, {
@@ -174,6 +193,7 @@ const HealthChart: React.FC = () => {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'healthy': return '#4CAF50';
+      case 'ok': return '#4CAF50';
       case 'degraded': return '#FF9800';
       case 'down': return '#F44336';
       default: return '#9E9E9E';
@@ -234,7 +254,7 @@ const HealthChart: React.FC = () => {
             marginBottom: '15px',
             fontFamily: 'Arial, sans-serif'
           }}>
-            API Connection Failed
+            Notification Service API Connection Failed
           </h2>
           <p style={{ 
             color: '#721c24', 
@@ -242,7 +262,7 @@ const HealthChart: React.FC = () => {
             lineHeight: '1.5',
             fontFamily: 'Arial, sans-serif'
           }}>
-            Unable to connect to the health monitoring API. The dashboard cannot display real-time data.
+            Unable to connect to the notification service health API. The dashboard cannot display real-time notification service data.
           </p>
           <div style={{
             backgroundColor: '#f8d7da',
@@ -264,9 +284,9 @@ const HealthChart: React.FC = () => {
           }}>
             <p>Please check:</p>
             <ul style={{ textAlign: 'left', margin: '10px 0' }}>
-              <li>API server is running</li>
-              <li>Network connectivity</li>
-              <li>API endpoint configuration in .env file</li>
+              <li>Notification service API server is running</li>
+              <li>Network connectivity to notification service</li>
+              <li>Notification health API endpoint configuration in .env file</li>
             </ul>
           </div>
           <button 
@@ -304,7 +324,7 @@ const HealthChart: React.FC = () => {
         height: '450px'
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-          <h2 style={{ margin: '0', color: '#333' }}>System Health Trend</h2>
+          <h2 style={{ margin: '0', color: '#333' }}>Notification Service Health Trend</h2>
           <div style={{ fontSize: '12px', color: '#666' }}>
             Data points: {chartData.length} | Last update: {chartData.length > 0 ? new Date(chartData[chartData.length - 1].time).toLocaleTimeString() : 'None'}
           </div>
@@ -483,6 +503,73 @@ const HealthChart: React.FC = () => {
           <div>
             <div style={{ fontSize: '12px', color: '#666' }}>Response Time</div>
             <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#333' }}>{systemData.database.responseTime} ms</div>
+          </div>
+        </div>
+        <div style={{
+          backgroundColor: 'white',
+          borderRadius: '8px',
+          boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+          padding: '20px'
+        }}>
+          <h3 style={{ margin: '0 0 15px 0', color: '#333' }}>Queue</h3>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
+            <div style={{
+              width: '12px',
+              height: '12px',
+              borderRadius: '50%',
+              backgroundColor: getStatusColor(systemData.queue.status)
+            }}></div>
+            <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#333', textTransform: 'capitalize' }}>
+              {systemData.queue.status}
+            </div>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '12px' }}>
+            <div>
+              <div style={{ color: '#666' }}>Waiting</div>
+              <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#333' }}>{systemData.queue.jobs.waiting}</div>
+            </div>
+            <div>
+              <div style={{ color: '#666' }}>Active</div>
+              <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#333' }}>{systemData.queue.jobs.active}</div>
+            </div>
+            <div>
+              <div style={{ color: '#666' }}>Completed</div>
+              <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#333' }}>{systemData.queue.jobs.completed}</div>
+            </div>
+            <div>
+              <div style={{ color: '#666' }}>Failed</div>
+              <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#333' }}>{systemData.queue.jobs.failed}</div>
+            </div>
+          </div>
+        </div>
+        <div style={{
+          backgroundColor: 'white',
+          borderRadius: '8px',
+          boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+          padding: '20px'
+        }}>
+          <h3 style={{ margin: '0 0 15px 0', color: '#333' }}>Email Service</h3>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
+            <div style={{
+              width: '12px',
+              height: '12px',
+              borderRadius: '50%',
+              backgroundColor: getStatusColor(systemData.email.status)
+            }}></div>
+            <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#333', textTransform: 'capitalize' }}>
+              {systemData.email.status}
+            </div>
+          </div>
+          <div style={{ marginBottom: '10px' }}>
+            <div style={{ fontSize: '12px', color: '#666' }}>Response Time</div>
+            <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#333' }}>{systemData.email.responseTime} ms</div>
+          </div>
+          <div>
+            <div style={{ fontSize: '12px', color: '#666', marginBottom: '5px' }}>SMTP Configuration</div>
+            <div style={{ fontSize: '12px', color: '#333' }}>
+              {systemData.email.smtp.host}:{systemData.email.smtp.port} 
+              {systemData.email.smtp.secure === 'true' && ' (Secure)'}
+            </div>
           </div>
         </div>
         <div style={{
