@@ -67,7 +67,7 @@ The dashboard expects your NeoVantis AuthService to provide these endpoints:
 **Request:**
 ```json
 {
-  "email": "admin@neovantis.com",
+  "username": "admin",
   "password": "securepassword"
 }
 ```
@@ -80,7 +80,7 @@ The dashboard expects your NeoVantis AuthService to provide these endpoints:
   "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
   "admin": {
     "id": "admin_123",
-    "email": "admin@neovantis.com",
+    "username": "admin",
     "role": "super_admin",
     "name": "John Doe",
     "permissions": ["read:users", "write:users", "read:system", "write:system"]
@@ -101,7 +101,7 @@ Authorization: Bearer <jwt_token>
   "message": "Token valid",
   "admin": {
     "id": "admin_123",
-    "email": "admin@neovantis.com",
+    "username": "admin",
     "role": "super_admin",
     "name": "John Doe",
     "permissions": ["read:users", "write:users", "read:system", "write:system"]

@@ -140,7 +140,7 @@ const UserManagement: React.FC = () => {
           </h4>
           <div style={{ fontSize: '14px', color: '#856404' }}>
             <p style={{ margin: '5px 0' }}>
-              <strong>User:</strong> {admin?.email}
+              <strong>User:</strong> {admin?.username}
             </p>
             <p style={{ margin: '5px 0' }}>
               <strong>Role:</strong> {admin?.role}

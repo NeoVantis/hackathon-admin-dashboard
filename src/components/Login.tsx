@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
 
 interface LoginFormData {
-  email: string;
+  username: string;
   password: string;
 }
 
@@ -10,7 +10,7 @@ const Login: React.FC = () => {
   const { login, isLoading, error, clearError } = useAuth();
   
   const [formData, setFormData] = useState<LoginFormData>({
-    email: '',
+    username: '',
     password: '',
   });
   
@@ -35,16 +35,16 @@ const Login: React.FC = () => {
     
     if (isSubmitting || isLoading) return;
 
-    const { email, password } = formData;
+    const { username, password } = formData;
     
     // Basic validation
-    if (!email.trim() || !password.trim()) {
+    if (!username.trim() || !password.trim()) {
       return;
     }
 
     try {
       setIsSubmitting(true);
-      await login(email.trim(), password);
+      await login(username.trim(), password);
       // Redirect will be handled by the routing logic
     } catch (err) {
       // Error is already handled by the auth context
@@ -120,16 +120,16 @@ const Login: React.FC = () => {
               fontWeight: 'bold',
               color: '#333'
             }}>
-              Email Address
+              Username
             </label>
             <input
-              type="email"
-              name="email"
-              value={formData.email}
+              type="text"
+              name="username"
+              value={formData.username}
               onChange={handleInputChange}
               required
               disabled={isLoading || isSubmitting}
-              placeholder="admin@neovantis.com"
+              placeholder="Enter your username"
               style={{
                 width: '100%',
                 padding: '12px',
@@ -196,11 +196,11 @@ const Login: React.FC = () => {
 
           <button
             type="submit"
-            disabled={isLoading || isSubmitting || !formData.email.trim() || !formData.password.trim()}
+            disabled={isLoading || isSubmitting || !formData.username.trim() || !formData.password.trim()}
             style={{
               width: '100%',
               padding: '14px',
-              backgroundColor: (isLoading || isSubmitting || !formData.email.trim() || !formData.password.trim()) 
+              backgroundColor: (isLoading || isSubmitting || !formData.username.trim() || !formData.password.trim()) 
                 ? '#ccc' 
                 : '#007bff',
               color: 'white',
@@ -208,7 +208,7 @@ const Login: React.FC = () => {
               borderRadius: '4px',
               fontSize: '16px',
               fontWeight: 'bold',
-              cursor: (isLoading || isSubmitting || !formData.email.trim() || !formData.password.trim()) 
+              cursor: (isLoading || isSubmitting || !formData.username.trim() || !formData.password.trim()) 
                 ? 'not-allowed' 
                 : 'pointer',
               display: 'flex',

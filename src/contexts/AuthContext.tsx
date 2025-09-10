@@ -68,12 +68,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   /**
    * Login function
    */
-  const login = async (email: string, password: string): Promise<void> => {
+  const login = async (username: string, password: string): Promise<void> => {
     try {
       setIsLoading(true);
       setError(null);
 
-      const response = await authApiService.login({ email, password });
+      const response = await authApiService.login({ username, password });
 
       if (!response.success || !response.token || !response.admin) {
         throw new Error(response.message || 'Login failed - invalid response');
@@ -83,7 +83,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setAdmin(response.admin);
       saveToStorage(response.token, response.admin);
 
-      console.log('✅ Login successful:', response.admin.email);
+      console.log('✅ Login successful:', response.admin.username);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Login failed';
       console.error('❌ Login error:', errorMessage);
@@ -149,7 +149,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setAdmin(response.admin);
         // Update stored admin data in case it changed
         saveToStorage(token, response.admin);
-        console.log('✅ Token validation successful:', response.admin.email);
+        console.log('✅ Token validation successful:', response.admin.username);
       } else {
         throw new Error(response.message || 'Token validation failed');
       }

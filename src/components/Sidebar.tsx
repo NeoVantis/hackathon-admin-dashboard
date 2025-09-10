@@ -205,7 +205,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange }) => {
             fontWeight: 'bold',
             marginBottom: '2px'
           }}>
-            {admin?.email || 'Unknown User'}
+            {admin?.username || 'Unknown User'}
           </div>
           <div style={{
             fontSize: '11px',

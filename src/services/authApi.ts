@@ -1,7 +1,7 @@
 // Auth API Service for NeoVantis AuthService integration
 
 export interface LoginRequest {
-  email: string;
+  username: string;
   password: string;
 }
 
@@ -11,7 +11,7 @@ export interface LoginResponse {
   token?: string;
   admin?: {
     id: string;
-    email: string;
+    username: string;
     role: string;
     name?: string;
     permissions?: string[];
@@ -23,7 +23,7 @@ export interface ValidateTokenResponse {
   message: string;
   admin?: {
     id: string;
-    email: string;
+    username: string;
     role: string;
     name?: string;
     permissions?: string[];

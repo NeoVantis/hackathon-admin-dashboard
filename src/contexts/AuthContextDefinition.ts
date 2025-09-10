@@ -3,7 +3,7 @@ import { createContext } from 'react';
 // Types
 export interface Admin {
   id: string;
-  email: string;
+  username: string;
   role: string;
   name?: string;
   permissions?: string[];
@@ -17,7 +17,7 @@ export interface AuthContextType {
   error: string | null;
   
   // Actions
-  login: (email: string, password: string) => Promise<void>;
+  login: (username: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   clearError: () => void;
   
