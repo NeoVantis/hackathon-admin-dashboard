@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { authApiService } from '../services/authApi';
-import type { Admin, CreateAdminRequest } from '../services/authApi';
+import type { Admin } from '../contexts/AuthContextDefinition';
+import type { CreateAdminRequest } from '../services/authApi';
 
 const UserManagement: React.FC = () => {
   const { isSuperAdmin, token, getRoleName } = useAuth();

@@ -1,13 +1,6 @@
 // Auth API Service for NeoVantis Admin API
 
-export interface Admin {
-  id: string;
-  name: string;
-  username: string;
-  role: number; // 0 = Super Admin, 1 = Admin
-  createdAt: string;
-  updatedAt: string;
-}
+import type { Admin } from '../contexts/AuthContextDefinition';
 
 export interface LoginRequest {
   username: string;
@@ -179,7 +172,7 @@ class AuthApiService {
     try {
       const admin = await this.getCurrentAdmin(token);
       return { valid: true, admin };
-    } catch (error) {
+    } catch {
       return { valid: false };
     }
   }

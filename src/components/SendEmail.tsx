@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 
-const API_BASE = import.meta.env.VITE_NOTIFICATION_SEND_EMAIL_API_URL;
-
+const SEND_EMAIL_API_URL = import.meta.env.VITE_NOTIFICATION_SEND_EMAIL_API_URL;
+const SEND_BULK_EMAIL_API_URL = import.meta.env.VITE_NOTIFICATION_SEND_BULK_EMAIL_API_URL;
 
 const defaultSingle = {
   recipientEmail: '',
@@ -49,7 +49,7 @@ export default function SendEmail() {
       let url = '';
       let body: Record<string, unknown> = {};
       if (mode === 'single') {
-        url = API_BASE + '/send-email';
+        url = SEND_EMAIL_API_URL;
         body = {
           ...single,
           metadata: single.metadata ? JSON.parse(single.metadata) : undefined,
@@ -61,7 +61,7 @@ export default function SendEmail() {
         if (!body.scheduledAt) delete body.scheduledAt;
         if (!body.campaignId) delete body.campaignId;
       } else {
-        url = API_BASE + '/send-bulk-email';
+        url = SEND_BULK_EMAIL_API_URL;
         body = {
           ...bulk,
           recipientEmails: bulk.recipientEmails

@@ -5,15 +5,13 @@ import Login from './Login';
 
 interface ProtectedRouteProps {
   children: ReactNode;
-  requiredRole?: string;
-  requiredPermission?: string;
+  requiredRole?: number;
   fallback?: ReactNode;
 }
 
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   children,
   requiredRole,
-  requiredPermission,
   fallback
 }) => {
   const { 
@@ -21,7 +19,6 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     isLoading, 
     admin, 
     hasRole, 
-    hasPermission,
     isSuperAdmin 
   } = useAuth();
 
@@ -122,65 +119,6 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
               color: '#6c757d'
             }}>
               Contact your system administrator if you believe this is an error.
-            </div>
-          </div>
-        </div>
-      )
-    );
-  }
-
-  // If authenticated but doesn't have required permission
-  if (requiredPermission && !hasPermission(requiredPermission) && !isSuperAdmin()) {
-    return (
-      fallback || (
-        <div style={{
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          height: '100vh',
-          backgroundColor: '#f5f5f5',
-          fontFamily: 'Arial, sans-serif'
-        }}>
-          <div style={{
-            backgroundColor: 'white',
-            borderRadius: '8px',
-            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-            padding: '40px',
-            textAlign: 'center',
-            maxWidth: '500px',
-            margin: '20px'
-          }}>
-            <div style={{
-              fontSize: '64px',
-              marginBottom: '20px'
-            }}>
-              🔒
-            </div>
-            <h2 style={{
-              color: '#e74c3c',
-              margin: '0 0 15px 0',
-              fontSize: '24px'
-            }}>
-              Insufficient Permissions
-            </h2>
-            <p style={{
-              color: '#666',
-              margin: '0 0 20px 0',
-              lineHeight: '1.5'
-            }}>
-              You don't have the required permission to access this feature.
-              <br />
-              Required permission: <strong>{requiredPermission}</strong>
-            </p>
-            <div style={{
-              backgroundColor: '#f8f9fa',
-              border: '1px solid #dee2e6',
-              borderRadius: '4px',
-              padding: '15px',
-              fontSize: '14px',
-              color: '#6c757d'
-            }}>
-              Your permissions: {admin?.permissions?.join(', ') || 'None'}
             </div>
           </div>
         </div>
