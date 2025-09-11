@@ -39,6 +39,7 @@ const services: ServiceTab[] = [
   //   icon: '📊',
   //   description: 'Usage analytics and insights'
   // }
+  { id: 'send-email', name: 'Send Email', icon: '📧', description: 'Send emails to users' },
 ];
 
 const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange }) => {
