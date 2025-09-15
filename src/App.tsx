@@ -5,7 +5,7 @@ import { AuthProvider } from './contexts/AuthContext';
 import { ThemeProvider } from './components/theme-provider';
 import ProtectedRoute from './components/ProtectedRoute';
 import SendEmail from './components/SendEmail';
-import NewLayout from './components/NewLayout';
+import Layout from './components/Layout';
 import Login from './components/Login';
 
 const App: React.FC = () => {
@@ -27,7 +27,7 @@ const App: React.FC = () => {
               path="/dashboard"
               element={
                 <ProtectedRoute>
-                  <NewLayout />
+                  <Layout />
                 </ProtectedRoute>
               }
             />
