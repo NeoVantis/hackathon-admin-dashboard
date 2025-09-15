@@ -4,17 +4,18 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { 
-  ChartContainer, 
-  ChartTooltip, 
+import {
+  ChartContainer,
+  ChartTooltip,
   ChartTooltipContent,
   ChartLegend,
   ChartLegendContent,
-  type ChartConfig 
+  type ChartConfig
 } from '@/components/ui/chart';
 import { AlertCircle, RefreshCw } from 'lucide-react';
 
-interface SystemData {
+// Base system data interface
+interface BaseSystemData {
   status: string;
   timestamp: string;
   version: string;
@@ -41,7 +42,16 @@ interface SystemData {
     status: string;
     responseTime: number;
   };
-  queue: {
+  network: {
+    hostname: string;
+    platform: string;
+    arch: string;
+  };
+}
+
+// Extended interface for notification service
+export interface NotificationSystemData extends BaseSystemData {
+  queue?: {
     status: string;
     jobs: {
       waiting: number;
@@ -51,7 +61,7 @@ interface SystemData {
       delayed: number;
     };
   };
-  email: {
+  email?: {
     status: string;
     responseTime: number;
     smtp: {
@@ -60,12 +70,9 @@ interface SystemData {
       secure: string;
     };
   };
-  network: {
-    hostname: string;
-    platform: string;
-    arch: string;
-  };
 }
+
+export type SystemData = BaseSystemData | NotificationSystemData;
 
 interface DataPoint {
   time: number;
@@ -73,7 +80,36 @@ interface DataPoint {
   cpu: number;
 }
 
-const HealthChart: React.FC = () => {
+interface StatusColorMapping {
+  [key: string]: string;
+}
+
+export interface HealthChartProps {
+  title: string;
+  apiUrl: string;
+  errorTitle: string;
+  errorDescription: string;
+  statusColorMapping?: StatusColorMapping;
+  showQueueCard?: boolean;
+  showEmailCard?: boolean;
+  gridCols?: string;
+}
+
+const HealthChart: React.FC<HealthChartProps> = ({
+  title,
+  apiUrl,
+  errorTitle,
+  errorDescription,
+  statusColorMapping = {
+    'healthy': 'bg-green-500',
+    'ok': 'bg-green-500',
+    'degraded': 'bg-yellow-500',
+    'down': 'bg-red-500'
+  },
+  showQueueCard = false,
+  showEmailCard = false,
+  gridCols = 'md:grid-cols-2'
+}) => {
   const [systemData, setSystemData] = useState<SystemData | null>(null);
   const [chartData, setChartData] = useState<DataPoint[]>([]);
   const [loading, setLoading] = useState(true);
@@ -83,10 +119,6 @@ const HealthChart: React.FC = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Use the notification service endpoint from environment variable
-        const apiUrl = import.meta.env.VITE_NOTIFICATION_HEALTH_API_URL || 'http://localhost:3000/api/v1/health';
-        
-        // Simple fetch without security validation
         const response = await fetch(apiUrl, {
           method: 'GET',
           headers: {
@@ -94,13 +126,13 @@ const HealthChart: React.FC = () => {
             'Accept': 'application/json'
           }
         });
-        
+
         if (!response.ok) {
           throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
-        
+
         const data = await response.json();
-        
+
         setSystemData(data);
         setApiConnected(true);
 
@@ -109,7 +141,7 @@ const HealthChart: React.FC = () => {
         const initialPoint = {
           time: now,
           memory: data.memory.usagePercent,
-          cpu: (data.cpu.loadAverage[0] / data.cpu.cores) * 100 // Normalize CPU load to percentage
+          cpu: (data.cpu.loadAverage[0] / data.cpu.cores) * 100
         };
         setChartData([initialPoint]);
         setError(null);
@@ -119,8 +151,7 @@ const HealthChart: React.FC = () => {
           message: err instanceof Error ? err.message : 'Unknown error occurred',
           timestamp: new Date().toISOString()
         });
-        
-        // Simple error message
+
         const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
         setError(`Failed to connect to API: ${errorMessage}`);
         setApiConnected(false);
@@ -132,21 +163,15 @@ const HealthChart: React.FC = () => {
     };
 
     fetchData();
-  }, []); // Remove systemData dependency
+  }, [apiUrl]);
 
-  // Separate useEffect for polling
   useEffect(() => {
-    // Don't start polling if initial connection failed
     if (!apiConnected) {
       return;
     }
 
-    
     const fetchNewDataPoint = async () => {
       try {
-        const apiUrl = import.meta.env.VITE_NOTIFICATION_HEALTH_API_URL || 'http://localhost:3000/api/v1/health';
-        
-        // Simple fetch
         const response = await fetch(apiUrl, {
           method: 'GET',
           headers: {
@@ -154,34 +179,31 @@ const HealthChart: React.FC = () => {
             'Accept': 'application/json'
           }
         });
-        
+
         if (!response.ok) {
           throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
-        
+
         const data = await response.json();
-        
+
         const currentTime = Date.now();
         const newPoint = {
           time: currentTime,
           memory: data.memory.usagePercent,
           cpu: (data.cpu.loadAverage[0] / data.cpu.cores) * 100
         };
-        
-        // Reset failure count on successful fetch
+
         setError(null);
-        
+
         setChartData(prevData => {
-          const updatedData = [...prevData.slice(-29), newPoint]; // Keep last 30 points
+          const updatedData = [...prevData.slice(-29), newPoint];
           return updatedData;
         });
-        
-        // Update system data for the info cards
+
         setSystemData(data);
       } catch (error) {
         console.error('❌ API polling failed:', error);
-        
-        // Simple error message
+
         const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
         setError(`API connection lost: ${errorMessage}`);
         setApiConnected(false);
@@ -190,13 +212,12 @@ const HealthChart: React.FC = () => {
       }
     };
 
-    // Update chart every 2 seconds
     const interval = setInterval(fetchNewDataPoint, 2000);
 
     return () => {
       clearInterval(interval);
     };
-  }, [apiConnected]); // Depend on apiConnected instead of systemData
+  }, [apiConnected, apiUrl]);
 
   const chartConfig = {
     memory: {
@@ -204,7 +225,7 @@ const HealthChart: React.FC = () => {
       color: "var(--chart-1)",
     },
     cpu: {
-      label: "CPU Load", 
+      label: "CPU Load",
       color: "var(--chart-2)",
     },
   } satisfies ChartConfig
@@ -215,13 +236,7 @@ const HealthChart: React.FC = () => {
   };
 
   const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'healthy': return 'bg-green-500';
-      case 'ok': return 'bg-green-500';
-      case 'degraded': return 'bg-yellow-500';
-      case 'down': return 'bg-red-500';
-      default: return 'bg-gray-500';
-    }
+    return statusColorMapping[status] || 'bg-gray-500';
   };
 
   const formatUptime = (seconds: number) => {
@@ -234,7 +249,6 @@ const HealthChart: React.FC = () => {
   if (loading) {
     return (
       <div className="space-y-6">
-        {/* Chart Skeleton */}
         <Card>
           <CardHeader>
             <Skeleton className="h-6 w-56" />
@@ -245,7 +259,6 @@ const HealthChart: React.FC = () => {
           </CardContent>
         </Card>
 
-        {/* Status Cards Skeleton */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {[...Array(3)].map((_, i) => (
             <Card key={i}>
@@ -260,9 +273,8 @@ const HealthChart: React.FC = () => {
           ))}
         </div>
 
-        {/* Details Grid Skeleton */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {[...Array(2)].map((_, i) => (
+        <div className={`grid grid-cols-1 ${gridCols} gap-4`}>
+          {[...Array(showQueueCard && showEmailCard ? 4 : showQueueCard || showEmailCard ? 3 : 2)].map((_, i) => (
             <Card key={i}>
               <CardHeader>
                 <Skeleton className="h-5 w-24" />
@@ -292,23 +304,15 @@ const HealthChart: React.FC = () => {
             <div className="text-center py-8">
               <AlertCircle className="h-12 w-12 text-destructive mx-auto mb-4" />
               <h3 className="text-lg font-semibold text-destructive mb-2">
-                Notification Service API Connection Failed
+                {errorTitle}
               </h3>
               <p className="text-muted-foreground mb-4">
-                Unable to connect to the notification service health API. The dashboard cannot display real-time notification service data.
+                {errorDescription}
               </p>
               <div className="bg-destructive/10 border border-destructive/20 rounded-md p-3 mb-4">
                 <p className="text-sm text-destructive font-mono">
                   <strong>Error:</strong> {error}
                 </p>
-              </div>
-              <div className="text-sm text-muted-foreground mb-4">
-                <p>Please check:</p>
-                <ul className="list-disc list-inside mt-2 space-y-1">
-                  <li>Notification service API server is running</li>
-                  <li>Network connectivity to notification service</li>
-                  <li>Notification health API endpoint configuration in .env file</li>
-                </ul>
               </div>
               <Button onClick={() => window.location.reload()} className="gap-2">
                 <RefreshCw className="h-4 w-4" />
@@ -323,10 +327,9 @@ const HealthChart: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Chart Section */}
       <Card>
         <CardHeader>
-          <CardTitle>Notification Service Health Trend</CardTitle>
+          <CardTitle>{title}</CardTitle>
           <CardDescription>
             Data points: {chartData.length} | Last update: {chartData.length > 0 ? new Date(chartData[chartData.length - 1].time).toLocaleTimeString() : 'None'}
           </CardDescription>
@@ -366,8 +369,8 @@ const HealthChart: React.FC = () => {
                 stroke="var(--color-memory)"
                 strokeWidth={2}
                 connectNulls={true}
-                dot={{ fill: "var(--color-memory)", r: 3, strokeWidth: 2 }}
-                activeDot={{ fill: "var(--color-memory)", r: 5, strokeWidth: 2 }}
+                dot={{ r: 3, strokeWidth: 2 }}
+                activeDot={{ r: 5, strokeWidth: 2 }}
                 name="Memory Usage"
               />
               <Line
@@ -376,8 +379,8 @@ const HealthChart: React.FC = () => {
                 stroke="var(--color-cpu)"
                 strokeWidth={2}
                 connectNulls={true}
-                dot={{ fill: "var(--color-cpu)", r: 3, strokeWidth: 2 }}
-                activeDot={{ fill: "var(--color-cpu)", r: 5, strokeWidth: 2 }}
+                dot={{ r: 3, strokeWidth: 2 }}
+                activeDot={{ r: 5, strokeWidth: 2 }}
                 name="CPU Load"
               />
             </LineChart>
@@ -385,7 +388,6 @@ const HealthChart: React.FC = () => {
         </CardContent>
       </Card>
 
-      {/* Status Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>
           <CardContent className="pt-6">
@@ -414,8 +416,7 @@ const HealthChart: React.FC = () => {
         </Card>
       </div>
 
-      {/* Details Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className={`grid grid-cols-1 ${gridCols} gap-4`}>
         <Card>
           <CardHeader>
             <CardTitle>Memory</CardTitle>
@@ -441,7 +442,7 @@ const HealthChart: React.FC = () => {
             </div>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardHeader>
             <CardTitle>CPU</CardTitle>
@@ -463,7 +464,7 @@ const HealthChart: React.FC = () => {
             </div>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardHeader>
             <CardTitle>Database</CardTitle>
@@ -483,80 +484,74 @@ const HealthChart: React.FC = () => {
             </div>
           </CardContent>
         </Card>
-        
-        <Card>
-          <CardHeader>
-            <CardTitle>Queue</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {systemData.queue ? (
+
+        {showQueueCard && (systemData as NotificationSystemData).queue && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Queue</CardTitle>
+            </CardHeader>
+            <CardContent>
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <div className={`w-3 h-3 rounded-full ${getStatusColor(systemData.queue.status)}`} />
+                  <div className={`w-3 h-3 rounded-full ${getStatusColor((systemData as NotificationSystemData).queue!.status)}`} />
                   <Badge variant="secondary" className="capitalize">
-                    {systemData.queue.status}
+                    {(systemData as NotificationSystemData).queue!.status}
                   </Badge>
                 </div>
-                {systemData.queue.jobs && (
-                  <div className="grid grid-cols-2 gap-2 text-xs">
-                    <div>
-                      <div className="text-muted-foreground">Waiting</div>
-                      <div className="font-medium">{systemData.queue.jobs.waiting}</div>
-                    </div>
-                    <div>
-                      <div className="text-muted-foreground">Active</div>
-                      <div className="font-medium">{systemData.queue.jobs.active}</div>
-                    </div>
-                    <div>
-                      <div className="text-muted-foreground">Completed</div>
-                      <div className="font-medium">{systemData.queue.jobs.completed}</div>
-                    </div>
-                    <div>
-                      <div className="text-muted-foreground">Failed</div>
-                      <div className="font-medium">{systemData.queue.jobs.failed}</div>
-                    </div>
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div>
+                    <div className="text-muted-foreground">Waiting</div>
+                    <div className="font-medium">{(systemData as NotificationSystemData).queue!.jobs.waiting}</div>
                   </div>
-                )}
+                  <div>
+                    <div className="text-muted-foreground">Active</div>
+                    <div className="font-medium">{(systemData as NotificationSystemData).queue!.jobs.active}</div>
+                  </div>
+                  <div>
+                    <div className="text-muted-foreground">Completed</div>
+                    <div className="font-medium">{(systemData as NotificationSystemData).queue!.jobs.completed}</div>
+                  </div>
+                  <div>
+                    <div className="text-muted-foreground">Failed</div>
+                    <div className="font-medium">{(systemData as NotificationSystemData).queue!.jobs.failed}</div>
+                  </div>
+                </div>
               </div>
-            ) : (
-              <div className="text-muted-foreground text-sm">Queue data not available</div>
-            )}
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader>
-            <CardTitle>Email Service</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {systemData.email ? (
+            </CardContent>
+          </Card>
+        )}
+
+        {showEmailCard && (systemData as NotificationSystemData).email && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Email Service</CardTitle>
+            </CardHeader>
+            <CardContent>
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <div className={`w-3 h-3 rounded-full ${getStatusColor(systemData.email.status)}`} />
+                  <div className={`w-3 h-3 rounded-full ${getStatusColor((systemData as NotificationSystemData).email!.status)}`} />
                   <Badge variant="secondary" className="capitalize">
-                    {systemData.email.status}
+                    {(systemData as NotificationSystemData).email!.status}
                   </Badge>
                 </div>
                 <div>
                   <div className="text-xs text-muted-foreground">Response Time</div>
-                  <div className="text-sm font-medium">{systemData.email.responseTime} ms</div>
+                  <div className="text-sm font-medium">{(systemData as NotificationSystemData).email!.responseTime} ms</div>
                 </div>
-                {systemData.email.smtp && (
+                {(systemData as NotificationSystemData).email!.smtp && (
                   <div>
                     <div className="text-xs text-muted-foreground">SMTP Configuration</div>
                     <div className="text-xs">
-                      {systemData.email.smtp.host}:{systemData.email.smtp.port} 
-                      {systemData.email.smtp.secure === 'true' && ' (Secure)'}
+                      {(systemData as NotificationSystemData).email!.smtp.host}:{(systemData as NotificationSystemData).email!.smtp.port}
+                      {(systemData as NotificationSystemData).email!.smtp.secure === 'true' && ' (Secure)'}
                     </div>
                   </div>
                 )}
               </div>
-            ) : (
-              <div className="text-muted-foreground text-sm">Email service data not available</div>
-            )}
-          </CardContent>
-        </Card>
-        
+            </CardContent>
+          </Card>
+        )}
+
         <Card>
           <CardHeader>
             <CardTitle>Network</CardTitle>

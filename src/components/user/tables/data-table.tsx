@@ -104,7 +104,7 @@ import {
   TabsTrigger,
 } from "@/components/ui/tabs"
 
-import { schema } from "@/components/tables/data-table-schema"
+import { schema } from "@/components/user/tables/data-table-schema"
 
 // Create a separate component for the drag handle
 function DragHandle({ id }: { id: number }) {

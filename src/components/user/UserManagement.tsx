@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useAuth } from '../hooks/useAuth';
-import { userApiService } from '../services/userApi';
+import { useAuth } from '../../hooks/useAuth';
+import { userApiService } from '../../services/userApi';
 import type {
   User,
   UserStatusInfo,
   UserManagementState
-} from '../types/user';
+} from '../../types/user';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';

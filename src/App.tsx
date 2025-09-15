@@ -2,11 +2,11 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
-import { ThemeProvider } from './components/theme-provider';
-import ProtectedRoute from './components/ProtectedRoute';
-import SendEmail from './components/SendEmail';
-import Layout from './components/Layout';
-import Login from './components/Login';
+import { ThemeProvider } from './components/layout/theme-provider';
+import ProtectedRoute from './components/auth/ProtectedRoute';
+import SendEmail from './components/notifications/SendEmail';
+import Layout from './components/layout/Layout';
+import Login from './components/auth/Login';
 
 const App: React.FC = () => {
   return (

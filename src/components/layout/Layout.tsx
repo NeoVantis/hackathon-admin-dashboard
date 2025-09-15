@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
-import { AppSidebar } from '@/components/app-sidebar';
+import { AppSidebar } from '@/components/sidebar/app-sidebar';
 import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar';
 import { Separator } from '@/components/ui/separator';
-import HealthMonitor from './HealthMonitor';
-import NotificationsTable from './NotificationsTable';
-import UserManagement from './UserManagement';
-import AdminManagement from './AdminManagement';
-import SendEmail from './SendEmail';
+import HealthMonitor from '../health/HealthMonitor';
+import NotificationsTable from '../notifications/NotificationsTable';
+import UserManagement from '../user/UserManagement';
+import AdminManagement from '../admin/AdminManagement';
+import SendEmail from '../notifications/SendEmail';
 
 const Layout: React.FC = () => {
   const [activeTab, setActiveTab] = useState('health');
