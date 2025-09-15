@@ -512,35 +512,43 @@ const HealthChart: React.FC = () => {
           padding: '20px'
         }}>
           <h3 style={{ margin: '0 0 15px 0', color: '#333' }}>Queue</h3>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
-            <div style={{
-              width: '12px',
-              height: '12px',
-              borderRadius: '50%',
-              backgroundColor: getStatusColor(systemData.queue.status)
-            }}></div>
-            <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#333', textTransform: 'capitalize' }}>
-              {systemData.queue.status}
-            </div>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '12px' }}>
-            <div>
-              <div style={{ color: '#666' }}>Waiting</div>
-              <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#333' }}>{systemData.queue.jobs.waiting}</div>
-            </div>
-            <div>
-              <div style={{ color: '#666' }}>Active</div>
-              <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#333' }}>{systemData.queue.jobs.active}</div>
-            </div>
-            <div>
-              <div style={{ color: '#666' }}>Completed</div>
-              <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#333' }}>{systemData.queue.jobs.completed}</div>
-            </div>
-            <div>
-              <div style={{ color: '#666' }}>Failed</div>
-              <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#333' }}>{systemData.queue.jobs.failed}</div>
-            </div>
-          </div>
+          {systemData.queue ? (
+            <>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
+                <div style={{
+                  width: '12px',
+                  height: '12px',
+                  borderRadius: '50%',
+                  backgroundColor: getStatusColor(systemData.queue.status)
+                }}></div>
+                <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#333', textTransform: 'capitalize' }}>
+                  {systemData.queue.status}
+                </div>
+              </div>
+              {systemData.queue.jobs && (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '12px' }}>
+                  <div>
+                    <div style={{ color: '#666' }}>Waiting</div>
+                    <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#333' }}>{systemData.queue.jobs.waiting}</div>
+                  </div>
+                  <div>
+                    <div style={{ color: '#666' }}>Active</div>
+                    <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#333' }}>{systemData.queue.jobs.active}</div>
+                  </div>
+                  <div>
+                    <div style={{ color: '#666' }}>Completed</div>
+                    <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#333' }}>{systemData.queue.jobs.completed}</div>
+                  </div>
+                  <div>
+                    <div style={{ color: '#666' }}>Failed</div>
+                    <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#333' }}>{systemData.queue.jobs.failed}</div>
+                  </div>
+                </div>
+              )}
+            </>
+          ) : (
+            <div style={{ color: '#666', fontSize: '14px' }}>Queue data not available</div>
+          )}
         </div>
         <div style={{
           backgroundColor: 'white',
@@ -549,28 +557,36 @@ const HealthChart: React.FC = () => {
           padding: '20px'
         }}>
           <h3 style={{ margin: '0 0 15px 0', color: '#333' }}>Email Service</h3>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
-            <div style={{
-              width: '12px',
-              height: '12px',
-              borderRadius: '50%',
-              backgroundColor: getStatusColor(systemData.email.status)
-            }}></div>
-            <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#333', textTransform: 'capitalize' }}>
-              {systemData.email.status}
-            </div>
-          </div>
-          <div style={{ marginBottom: '10px' }}>
-            <div style={{ fontSize: '12px', color: '#666' }}>Response Time</div>
-            <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#333' }}>{systemData.email.responseTime} ms</div>
-          </div>
-          <div>
-            <div style={{ fontSize: '12px', color: '#666', marginBottom: '5px' }}>SMTP Configuration</div>
-            <div style={{ fontSize: '12px', color: '#333' }}>
-              {systemData.email.smtp.host}:{systemData.email.smtp.port} 
-              {systemData.email.smtp.secure === 'true' && ' (Secure)'}
-            </div>
-          </div>
+          {systemData.email ? (
+            <>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
+                <div style={{
+                  width: '12px',
+                  height: '12px',
+                  borderRadius: '50%',
+                  backgroundColor: getStatusColor(systemData.email.status)
+                }}></div>
+                <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#333', textTransform: 'capitalize' }}>
+                  {systemData.email.status}
+                </div>
+              </div>
+              <div style={{ marginBottom: '10px' }}>
+                <div style={{ fontSize: '12px', color: '#666' }}>Response Time</div>
+                <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#333' }}>{systemData.email.responseTime} ms</div>
+              </div>
+              {systemData.email.smtp && (
+                <div>
+                  <div style={{ fontSize: '12px', color: '#666', marginBottom: '5px' }}>SMTP Configuration</div>
+                  <div style={{ fontSize: '12px', color: '#333' }}>
+                    {systemData.email.smtp.host}:{systemData.email.smtp.port} 
+                    {systemData.email.smtp.secure === 'true' && ' (Secure)'}
+                  </div>
+                </div>
+              )}
+            </>
+          ) : (
+            <div style={{ color: '#666', fontSize: '14px' }}>Email service data not available</div>
+          )}
         </div>
         <div style={{
           backgroundColor: 'white',

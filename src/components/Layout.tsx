@@ -3,6 +3,7 @@ import Sidebar from './Sidebar';
 import HealthMonitor from './HealthMonitor';
 import NotificationsChart from './NotificationsChart';
 import UserManagement from './UserManagement';
+import AdminManagement from './AdminManagement';
 import SendEmail from './SendEmail';
 
 const Layout: React.FC = () => {
@@ -16,6 +17,8 @@ const Layout: React.FC = () => {
         return <NotificationsChart />;
       case 'users':
         return <UserManagement />;
+      case 'admin-management':
+        return <AdminManagement />;
       case 'send-email':
         return <SendEmail />;
       default:

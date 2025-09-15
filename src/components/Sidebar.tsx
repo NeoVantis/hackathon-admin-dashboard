@@ -15,6 +15,12 @@ interface ServiceTab {
 
 const services: ServiceTab[] = [
   {
+    id: 'users',
+    name: 'User Management',
+    icon: '👥',
+    description: 'Manage hackathon users and accounts'
+  },
+  {
     id: 'health',
     name: 'Health Monitor',
     icon: '🏥',
@@ -61,12 +67,12 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange }) => {
   const getAvailableServices = () => {
     const baseServices = [...services];
     
-    // Add super admin only services
+        // Add super admin only services
     if (isSuperAdmin()) {
       baseServices.push({
-        id: 'users',
-        name: 'User Management',
-        icon: '👥',
+        id: 'admin-management',
+        name: 'Admin Management',
+        icon: '⚙️',
         description: 'Manage admin users and permissions'
       });
     }

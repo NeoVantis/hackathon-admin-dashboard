@@ -1,3 +1,4 @@
+@import "tailwindcss";
 /* Reset styles for proper layout */
 html, body, #root {
   margin: 0;
