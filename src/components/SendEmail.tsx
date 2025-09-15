@@ -1,4 +1,63 @@
 import React, { useState } from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Checkbox } from '@/components/ui/checkbox';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { AlertCircle, CheckCircle, Mail, Send, Clock } from 'lucide-react';
+
+// Utility functions for timezone handling
+const formatDateForInput = (date: Date | string | null): string => {
+  if (!date) return '';
+  const d = new Date(date);
+  if (isNaN(d.getTime())) return '';
+  
+  // Format for datetime-local input (YYYY-MM-DDTHH:MM)
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  const hours = String(d.getHours()).padStart(2, '0');
+  const minutes = String(d.getMinutes()).padStart(2, '0');
+  
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
+};
+
+const convertLocalToUTC = (localDateTime: string): string => {
+  if (!localDateTime) return '';
+  
+  // Create a date object from the local datetime string
+  const localDate = new Date(localDateTime);
+  
+  // Return ISO string which is in UTC
+  return localDate.toISOString();
+};
+
+const getMinDateTime = (): string => {
+  // Get current time and add 1 minute to ensure future scheduling
+  const now = new Date();
+  now.setMinutes(now.getMinutes() + 1);
+  return formatDateForInput(now);
+};
+
+const formatTimeZoneDisplay = (): string => {
+  const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const now = new Date();
+  const timeZoneOffset = now.getTimezoneOffset();
+  const offsetHours = Math.floor(Math.abs(timeZoneOffset) / 60);
+  const offsetMinutes = Math.abs(timeZoneOffset) % 60;
+  const offsetSign = timeZoneOffset <= 0 ? '+' : '-';
+  
+  return `${timeZone} (UTC${offsetSign}${offsetHours.toString().padStart(2, '0')}:${offsetMinutes.toString().padStart(2, '0')})`;
+};
 
 const SEND_EMAIL_API_URL = import.meta.env.VITE_NOTIFICATION_SEND_EMAIL_API_URL;
 const SEND_BULK_EMAIL_API_URL = import.meta.env.VITE_NOTIFICATION_SEND_BULK_EMAIL_API_URL;
@@ -32,13 +91,27 @@ export default function SendEmail() {
   const [bulk, setBulk] = useState(defaultBulk);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<{ success: boolean; message: string } | null>(null);
+  const [isScheduled, setIsScheduled] = useState(false);
 
-
-  type InputChangeEvent = React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>;
+  type InputChangeEvent = React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>;
   const handleChange = (e: InputChangeEvent, isBulk = false) => {
     const { name, value } = e.target;
     if (isBulk) setBulk((b) => ({ ...b, [name]: value }));
     else setSingle((s) => ({ ...s, [name]: value }));
+  };
+
+  const handleSelectChange = (value: string, field: string, isBulk = false) => {
+    if (isBulk) setBulk((b) => ({ ...b, [field]: value }));
+    else setSingle((s) => ({ ...s, [field]: value }));
+  };
+
+  const handleScheduleToggle = (checked: boolean) => {
+    setIsScheduled(checked);
+    if (!checked) {
+      // Clear the scheduled time when toggling off
+      setSingle((s) => ({ ...s, scheduledAt: '' }));
+      setBulk((b) => ({ ...b, scheduledAt: '' }));
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -48,523 +121,334 @@ export default function SendEmail() {
     try {
       let url = '';
       let body: Record<string, unknown> = {};
+      
       if (mode === 'single') {
         url = SEND_EMAIL_API_URL;
+        const { scheduledAt, metadata, ...otherFields } = single;
+        
+        // Validate scheduled time if provided (compare in local time)
+        if (scheduledAt) {
+          const scheduledDate = new Date(scheduledAt);
+          const now = new Date();
+          
+          if (scheduledDate <= now) {
+            setResult({ 
+              success: false, 
+              message: 'Scheduled time must be in the future' 
+            });
+            setLoading(false);
+            return;
+          }
+        }
+        
         body = {
-          ...single,
-          metadata: single.metadata ? JSON.parse(single.metadata) : undefined,
-          scheduledAt: single.scheduledAt || undefined,
+          ...otherFields,
+          // Convert to UTC and only include scheduledAt if it has a value
+          ...(scheduledAt && { scheduledAt: convertLocalToUTC(scheduledAt) }),
+          // Only include metadata if it has a value and is valid JSON
+          ...(metadata && (() => {
+            try {
+              return { metadata: JSON.parse(metadata) };
+            } catch {
+              throw new Error('Invalid JSON format in metadata field');
+            }
+          })()),
         };
-        if (!body.htmlContent) delete body.htmlContent;
-        if (!body.recipientName) delete body.recipientName;
-        if (!body.metadata) delete body.metadata;
-        if (!body.scheduledAt) delete body.scheduledAt;
-        if (!body.campaignId) delete body.campaignId;
       } else {
         url = SEND_BULK_EMAIL_API_URL;
+        const emails = bulk.recipientEmails
+          .split(/[,\n]/)
+          .map((e) => e.trim())
+          .filter(Boolean);
+          
+        const { scheduledAt, metadata, ...otherFields } = bulk;
+        
+        // Validate scheduled time if provided (compare in local time)
+        if (scheduledAt) {
+          const scheduledDate = new Date(scheduledAt);
+          const now = new Date();
+          
+          if (scheduledDate <= now) {
+            setResult({ 
+              success: false, 
+              message: 'Scheduled time must be in the future' 
+            });
+            setLoading(false);
+            return;
+          }
+        }
+        
         body = {
-          ...bulk,
-          recipientEmails: bulk.recipientEmails
-            .split(/[\n,]+/)
-            .map((e) => e.trim())
-            .filter(Boolean),
-          metadata: bulk.metadata ? JSON.parse(bulk.metadata) : undefined,
-          scheduledAt: bulk.scheduledAt || undefined,
+          ...otherFields,
+          recipientEmails: emails,
+          // Convert to UTC and only include scheduledAt if it has a value
+          ...(scheduledAt && { scheduledAt: convertLocalToUTC(scheduledAt) }),
+          // Only include metadata if it has a value and is valid JSON
+          ...(metadata && (() => {
+            try {
+              return { metadata: JSON.parse(metadata) };
+            } catch {
+              throw new Error('Invalid JSON format in metadata field');
+            }
+          })()),
         };
-        if (!body.htmlContent) delete body.htmlContent;
-        if (!body.metadata) delete body.metadata;
-        if (!body.scheduledAt) delete body.scheduledAt;
-        if (!body.campaignId) delete body.campaignId;
       }
-      const res = await fetch(url, {
+
+      const response = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       });
-      const data = await res.json();
-      setResult({ success: data.success, message: data.message });
-    } catch (err) {
-      const errorMsg = err instanceof Error ? err.message : 'Unknown error';
-      setResult({ success: false, message: errorMsg });
+
+      const data = await response.json();
+      if (response.ok) {
+        const currentData = mode === 'single' ? single : bulk;
+        const successMessage = currentData.scheduledAt 
+          ? data.message || 'Email scheduled successfully!' 
+          : data.message || 'Email sent successfully!';
+        setResult({ success: true, message: successMessage });
+        if (mode === 'single') setSingle(defaultSingle);
+        else setBulk(defaultBulk);
+        setIsScheduled(false); // Reset scheduling toggle
+      } else {
+        setResult({ success: false, message: data.message || 'Failed to send email' });
+      }
+    } catch (error) {
+      setResult({ 
+        success: false, 
+        message: error instanceof Error ? error.message : 'An unexpected error occurred' 
+      });
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div style={{
-      margin: '32px 32px',
-      background: '#fff',
-      borderRadius: '12px',
-      boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-      padding: '32px'
-    }}>
-      <h2 style={{ marginBottom: '24px', color: '#333', textAlign: 'center' }}>Send Email Notification</h2>
-
-      {/* Tabs */}
-      <div style={{
-        display: 'flex',
-        justifyContent: 'center',
-        marginBottom: '24px',
-        padding: '8px',
-        background: '#f8f9fa',
-        borderRadius: '20px',
-        border: '1px solid #e9ecef'
-      }}>
-        <button
-          onClick={() => setMode('single')}
-          disabled={mode === 'single'}
-          style={{
-            flex: 1,
-            padding: '8px 16px',
-            background: mode === 'single' ? '#007bff' : 'transparent',
-            color: mode === 'single' ? '#fff' : '#333',
-            border: 'none',
-            borderRadius: '16px',
-            cursor: 'pointer',
-            fontSize: '0.9rem',
-            fontWeight: '500',
-            transition: 'all 0.2s'
-          }}
-        >
-          Single Email
-        </button>
-        <button
-          onClick={() => setMode('bulk')}
-          disabled={mode === 'bulk'}
-          style={{
-            flex: 1,
-            padding: '8px 16px',
-            background: mode === 'bulk' ? '#007bff' : 'transparent',
-            color: mode === 'bulk' ? '#fff' : '#333',
-            border: 'none',
-            borderRadius: '16px',
-            cursor: 'pointer',
-            fontSize: '0.9rem',
-            fontWeight: '500',
-            transition: 'all 0.2s'
-          }}
-        >
-          Bulk Email
-        </button>
+    <div className="space-y-6">
+      {/* Header */}
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight">Send Email</h1>
+        <p className="text-muted-foreground">
+          Send single emails or bulk email campaigns to users
+        </p>
       </div>
 
-      <form onSubmit={handleSubmit}>
-        {mode === 'single' ? (
-          <>
-            {/* Recipient Details */}
-            <div style={{ marginBottom: '24px' }}>
-              <h3 style={{ marginBottom: '16px', color: '#555', fontSize: '1.1rem', borderBottom: '1px solid #e9ecef', paddingBottom: '8px' }}>Recipient Details</h3>
-              <label style={{ display: 'block', marginBottom: '16px', fontWeight: '500', color: '#555', fontSize: '0.9rem' }}>
-                Recipient Email <span style={{ color: '#dc3545' }}>*</span>
-                <input
-                  name="recipientEmail"
-                  value={single.recipientEmail}
-                  onChange={handleChange}
-                  required
-                  style={{
-                    width: '100%',
-                    marginTop: '4px',
-                    padding: '10px',
-                    border: '1px solid #ddd',
-                    borderRadius: '6px',
-                    fontSize: '1rem',
-                    boxSizing: 'border-box'
-                  }}
-                />
-              </label>
-              <label style={{ display: 'block', marginBottom: '16px', fontWeight: '500', color: '#555', fontSize: '0.9rem' }}>
-                Recipient Name
-                <input
-                  name="recipientName"
-                  value={single.recipientName}
-                  onChange={handleChange}
-                  style={{
-                    width: '100%',
-                    marginTop: '4px',
-                    padding: '10px',
-                    border: '1px solid #ddd',
-                    borderRadius: '6px',
-                    fontSize: '1rem',
-                    boxSizing: 'border-box'
-                  }}
-                />
-              </label>
-            </div>
-
-            {/* Email Content */}
-            <div style={{ marginBottom: '24px' }}>
-              <h3 style={{ marginBottom: '16px', color: '#555', fontSize: '1.1rem', borderBottom: '1px solid #e9ecef', paddingBottom: '8px' }}>Email Content</h3>
-              <label style={{ display: 'block', marginBottom: '16px', fontWeight: '500', color: '#555', fontSize: '0.9rem' }}>
-                Subject <span style={{ color: '#dc3545' }}>*</span>
-                <input
-                  name="subject"
-                  value={single.subject}
-                  onChange={handleChange}
-                  required
-                  style={{
-                    width: '100%',
-                    marginTop: '4px',
-                    padding: '10px',
-                    border: '1px solid #ddd',
-                    borderRadius: '6px',
-                    fontSize: '1rem',
-                    boxSizing: 'border-box'
-                  }}
-                />
-              </label>
-              <label style={{ display: 'block', marginBottom: '16px', fontWeight: '500', color: '#555', fontSize: '0.9rem' }}>
-                Plain Text Body <span style={{ color: '#dc3545' }}>*</span>
-                <textarea
-                  name="content"
-                  value={single.content}
-                  onChange={handleChange}
-                  required
-                  rows={4}
-                  style={{
-                    width: '100%',
-                    marginTop: '4px',
-                    padding: '10px',
-                    border: '1px solid #ddd',
-                    borderRadius: '6px',
-                    fontSize: '1rem',
-                    boxSizing: 'border-box',
-                    resize: 'vertical',
-                    minHeight: '80px'
-                  }}
-                />
-              </label>
-              <label style={{ display: 'block', marginBottom: '16px', fontWeight: '500', color: '#555', fontSize: '0.9rem' }}>
-                HTML Body
-                <textarea
-                  name="htmlContent"
-                  value={single.htmlContent}
-                  onChange={handleChange}
-                  rows={4}
-                  style={{
-                    width: '100%',
-                    marginTop: '4px',
-                    padding: '10px',
-                    border: '1px solid #ddd',
-                    borderRadius: '6px',
-                    fontSize: '1rem',
-                    boxSizing: 'border-box',
-                    resize: 'vertical',
-                    minHeight: '80px'
-                  }}
-                />
-              </label>
-            </div>
-
-            {/* Settings */}
-            <div style={{ marginBottom: '24px' }}>
-              <h3 style={{ marginBottom: '16px', color: '#555', fontSize: '1.1rem', borderBottom: '1px solid #e9ecef', paddingBottom: '8px' }}>Settings</h3>
-              <label style={{ display: 'block', marginBottom: '16px', fontWeight: '500', color: '#555', fontSize: '0.9rem' }}>
-                Priority
-                <select
-                  name="priority"
-                  value={single.priority}
-                  onChange={handleChange}
-                  style={{
-                    width: '100%',
-                    marginTop: '4px',
-                    padding: '10px',
-                    border: '1px solid #ddd',
-                    borderRadius: '6px',
-                    fontSize: '1rem',
-                    boxSizing: 'border-box'
-                  }}
-                >
-                  <option value="low">Low</option>
-                  <option value="normal">Normal</option>
-                  <option value="high">High</option>
-                  <option value="critical">Critical</option>
-                </select>
-              </label>
-              <label style={{ display: 'block', marginBottom: '16px', fontWeight: '500', color: '#555', fontSize: '0.9rem' }}>
-                Scheduled At (ISO 8601)
-                <input
-                  name="scheduledAt"
-                  value={single.scheduledAt}
-                  onChange={handleChange}
-                  placeholder="2025-09-08T10:15:00.000Z"
-                  style={{
-                    width: '100%',
-                    marginTop: '4px',
-                    padding: '10px',
-                    border: '1px solid #ddd',
-                    borderRadius: '6px',
-                    fontSize: '1rem',
-                    boxSizing: 'border-box'
-                  }}
-                />
-              </label>
-              <label style={{ display: 'block', marginBottom: '16px', fontWeight: '500', color: '#555', fontSize: '0.9rem' }}>
-                Metadata (JSON)
-                <input
-                  name="metadata"
-                  value={single.metadata}
-                  onChange={handleChange}
-                  placeholder='{"source":"signup"}'
-                  style={{
-                    width: '100%',
-                    marginTop: '4px',
-                    padding: '10px',
-                    border: '1px solid #ddd',
-                    borderRadius: '6px',
-                    fontSize: '1rem',
-                    boxSizing: 'border-box'
-                  }}
-                />
-              </label>
-              <label style={{ display: 'block', marginBottom: '16px', fontWeight: '500', color: '#555', fontSize: '0.9rem' }}>
-                Campaign ID
-                <input
-                  name="campaignId"
-                  value={single.campaignId}
-                  onChange={handleChange}
-                  style={{
-                    width: '100%',
-                    marginTop: '4px',
-                    padding: '10px',
-                    border: '1px solid #ddd',
-                    borderRadius: '6px',
-                    fontSize: '1rem',
-                    boxSizing: 'border-box'
-                  }}
-                />
-              </label>
-            </div>
-          </>
-        ) : (
-          <>
-            {/* Recipient Details */}
-            <div style={{ marginBottom: '24px' }}>
-              <h3 style={{ marginBottom: '16px', color: '#555', fontSize: '1.1rem', borderBottom: '1px solid #e9ecef', paddingBottom: '8px' }}>Recipient Details</h3>
-              <label style={{ display: 'block', marginBottom: '16px', fontWeight: '500', color: '#555', fontSize: '0.9rem' }}>
-                Recipient Emails <span style={{ color: '#dc3545' }}>*</span> (comma or newline separated, max 1000)
-                <textarea
-                  name="recipientEmails"
-                  value={bulk.recipientEmails}
-                  onChange={(e) => handleChange(e, true)}
-                  required
-                  rows={4}
-                  style={{
-                    width: '100%',
-                    marginTop: '4px',
-                    padding: '10px',
-                    border: '1px solid #ddd',
-                    borderRadius: '6px',
-                    fontSize: '1rem',
-                    boxSizing: 'border-box',
-                    resize: 'vertical',
-                    minHeight: '80px'
-                  }}
-                />
-              </label>
-            </div>
-
-            {/* Email Content */}
-            <div style={{ marginBottom: '24px' }}>
-              <h3 style={{ marginBottom: '16px', color: '#555', fontSize: '1.1rem', borderBottom: '1px solid #e9ecef', paddingBottom: '8px' }}>Email Content</h3>
-              <label style={{ display: 'block', marginBottom: '16px', fontWeight: '500', color: '#555', fontSize: '0.9rem' }}>
-                Subject <span style={{ color: '#dc3545' }}>*</span>
-                <input
-                  name="subject"
-                  value={bulk.subject}
-                  onChange={(e) => handleChange(e, true)}
-                  required
-                  style={{
-                    width: '100%',
-                    marginTop: '4px',
-                    padding: '10px',
-                    border: '1px solid #ddd',
-                    borderRadius: '6px',
-                    fontSize: '1rem',
-                    boxSizing: 'border-box'
-                  }}
-                />
-              </label>
-              <label style={{ display: 'block', marginBottom: '16px', fontWeight: '500', color: '#555', fontSize: '0.9rem' }}>
-                Plain Text Body <span style={{ color: '#dc3545' }}>*</span>
-                <textarea
-                  name="content"
-                  value={bulk.content}
-                  onChange={(e) => handleChange(e, true)}
-                  required
-                  rows={4}
-                  style={{
-                    width: '100%',
-                    marginTop: '4px',
-                    padding: '10px',
-                    border: '1px solid #ddd',
-                    borderRadius: '6px',
-                    fontSize: '1rem',
-                    boxSizing: 'border-box',
-                    resize: 'vertical',
-                    minHeight: '80px'
-                  }}
-                />
-              </label>
-              <label style={{ display: 'block', marginBottom: '16px', fontWeight: '500', color: '#555', fontSize: '0.9rem' }}>
-                HTML Body
-                <textarea
-                  name="htmlContent"
-                  value={bulk.htmlContent}
-                  onChange={(e) => handleChange(e, true)}
-                  rows={4}
-                  style={{
-                    width: '100%',
-                    marginTop: '4px',
-                    padding: '10px',
-                    border: '1px solid #ddd',
-                    borderRadius: '6px',
-                    fontSize: '1rem',
-                    boxSizing: 'border-box',
-                    resize: 'vertical',
-                    minHeight: '80px'
-                  }}
-                />
-              </label>
-            </div>
-
-            {/* Settings */}
-            <div style={{ marginBottom: '24px' }}>
-              <h3 style={{ marginBottom: '16px', color: '#555', fontSize: '1.1rem', borderBottom: '1px solid #e9ecef', paddingBottom: '8px' }}>Settings</h3>
-              <label style={{ display: 'block', marginBottom: '16px', fontWeight: '500', color: '#555', fontSize: '0.9rem' }}>
-                Priority
-                <select
-                  name="priority"
-                  value={bulk.priority}
-                  onChange={(e) => handleChange(e, true)}
-                  style={{
-                    width: '100%',
-                    marginTop: '4px',
-                    padding: '10px',
-                    border: '1px solid #ddd',
-                    borderRadius: '6px',
-                    fontSize: '1rem',
-                    boxSizing: 'border-box'
-                  }}
-                >
-                  <option value="low">Low</option>
-                  <option value="normal">Normal</option>
-                  <option value="high">High</option>
-                  <option value="critical">Critical</option>
-                </select>
-              </label>
-              <label style={{ display: 'block', marginBottom: '16px', fontWeight: '500', color: '#555', fontSize: '0.9rem' }}>
-                Scheduled At (ISO 8601)
-                <input
-                  name="scheduledAt"
-                  value={bulk.scheduledAt}
-                  onChange={(e) => handleChange(e, true)}
-                  placeholder="2025-09-08T10:30:00.000Z"
-                  style={{
-                    width: '100%',
-                    marginTop: '4px',
-                    padding: '10px',
-                    border: '1px solid #ddd',
-                    borderRadius: '6px',
-                    fontSize: '1rem',
-                    boxSizing: 'border-box'
-                  }}
-                />
-              </label>
-              <label style={{ display: 'block', marginBottom: '16px', fontWeight: '500', color: '#555', fontSize: '0.9rem' }}>
-                Metadata (JSON)
-                <input
-                  name="metadata"
-                  value={bulk.metadata}
-                  onChange={(e) => handleChange(e, true)}
-                  placeholder='{"batch":1}'
-                  style={{
-                    width: '100%',
-                    marginTop: '4px',
-                    padding: '10px',
-                    border: '1px solid #ddd',
-                    borderRadius: '6px',
-                    fontSize: '1rem',
-                    boxSizing: 'border-box'
-                  }}
-                />
-              </label>
-              <label style={{ display: 'block', marginBottom: '16px', fontWeight: '500', color: '#555', fontSize: '0.9rem' }}>
-                Campaign ID
-                <input
-                  name="campaignId"
-                  value={bulk.campaignId}
-                  onChange={(e) => handleChange(e, true)}
-                  style={{
-                    width: '100%',
-                    marginTop: '4px',
-                    padding: '10px',
-                    border: '1px solid #ddd',
-                    borderRadius: '6px',
-                    fontSize: '1rem',
-                    boxSizing: 'border-box'
-                  }}
-                />
-              </label>
-            </div>
-          </>
-        )}
-
-        {/* Actions */}
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '24px' }}>
-          <button
-            type="button"
-            onClick={() => {
-              setSingle(defaultSingle);
-              setBulk(defaultBulk);
-              setResult(null);
-            }}
-            style={{
-              padding: '10px 20px',
-              background: 'transparent',
-              color: '#6c757d',
-              border: '1px solid #6c757d',
-              borderRadius: '6px',
-              fontSize: '1rem',
-              cursor: 'pointer',
-              transition: 'all 0.2s'
-            }}
-          >
-            Reset
-          </button>
-          <button
-            type="submit"
-            disabled={loading}
-            style={{
-              padding: '10px 20px',
-              background: loading ? '#6c757d' : '#007bff',
-              color: '#fff',
-              border: 'none',
-              borderRadius: '6px',
-              fontSize: '1rem',
-              fontWeight: 'bold',
-              cursor: loading ? 'not-allowed' : 'pointer',
-              transition: 'background 0.2s'
-            }}
-          >
-            {loading ? 'Sending...' : mode === 'single' ? 'Send Email' : 'Send Bulk Email'}
-          </button>
-        </div>
-      </form>
-
+      {/* Result Message */}
       {result && (
-        <div style={{
-          marginTop: '24px',
-          padding: '12px',
-          borderRadius: '6px',
-          background: result.success ? '#d4edda' : '#f8d7da',
-          color: result.success ? '#155724' : '#721c24',
-          border: `1px solid ${result.success ? '#c3e6cb' : '#f5c6cb'}`,
-          textAlign: 'center'
-        }}>
-          {result.message}
+        <div className={`flex items-center gap-2 p-4 rounded-md border ${
+          result.success 
+            ? 'text-green-600 bg-green-50 border-green-200' 
+            : 'text-red-600 bg-red-50 border-red-200'
+        }`}>
+          {result.success ? (
+            <CheckCircle className="h-4 w-4" />
+          ) : (
+            <AlertCircle className="h-4 w-4" />
+          )}
+          <span>{result.message}</span>
         </div>
       )}
+
+      {/* Email Form */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Mail className="h-5 w-5" />
+            Email Campaign
+          </CardTitle>
+          <CardDescription>
+            Choose between sending a single email or bulk email campaign
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <Tabs value={mode} onValueChange={(value) => setMode(value as 'single' | 'bulk')}>
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="single">Single Email</TabsTrigger>
+                <TabsTrigger value="bulk">Bulk Email</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="single" className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="recipientEmail">Recipient Email *</Label>
+                    <Input
+                      id="recipientEmail"
+                      name="recipientEmail"
+                      type="email"
+                      placeholder="user@example.com"
+                      value={single.recipientEmail}
+                      onChange={(e) => handleChange(e)}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="recipientName">Recipient Name</Label>
+                    <Input
+                      id="recipientName"
+                      name="recipientName"
+                      placeholder="John Doe"
+                      value={single.recipientName}
+                      onChange={(e) => handleChange(e)}
+                    />
+                  </div>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="bulk" className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="recipientEmails">Recipient Emails *</Label>
+                  <Textarea
+                    id="recipientEmails"
+                    name="recipientEmails"
+                    placeholder="Enter email addresses separated by commas or new lines"
+                    value={bulk.recipientEmails}
+                    onChange={(e) => handleChange(e, true)}
+                    rows={4}
+                    required
+                  />
+                  <p className="text-sm text-muted-foreground">
+                    Separate multiple emails with commas or new lines
+                  </p>
+                </div>
+              </TabsContent>
+            </Tabs>
+
+            {/* Common Fields */}
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="subject">Subject *</Label>
+                <Input
+                  id="subject"
+                  name="subject"
+                  placeholder="Email subject"
+                  value={mode === 'single' ? single.subject : bulk.subject}
+                  onChange={(e) => handleChange(e, mode === 'bulk')}
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="content">Content *</Label>
+                <Textarea
+                  id="content"
+                  name="content"
+                  placeholder="Email content (plain text)"
+                  value={mode === 'single' ? single.content : bulk.content}
+                  onChange={(e) => handleChange(e, mode === 'bulk')}
+                  rows={6}
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="htmlContent">HTML Content (Optional)</Label>
+                <Textarea
+                  id="htmlContent"
+                  name="htmlContent"
+                  placeholder="<h1>HTML content</h1>"
+                  value={mode === 'single' ? single.htmlContent : bulk.htmlContent}
+                  onChange={(e) => handleChange(e, mode === 'bulk')}
+                  rows={4}
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="priority">Priority</Label>
+                  <Select
+                    value={mode === 'single' ? single.priority : bulk.priority}
+                    onValueChange={(value) => handleSelectChange(value, 'priority', mode === 'bulk')}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select priority" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="low">Low</SelectItem>
+                      <SelectItem value="normal">Normal</SelectItem>
+                      <SelectItem value="high">High</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="schedule-email"
+                      checked={isScheduled}
+                      onCheckedChange={handleScheduleToggle}
+                    />
+                    <Label htmlFor="schedule-email" className="flex items-center gap-2">
+                      <Clock className="h-4 w-4" />
+                      Schedule for later
+                    </Label>
+                  </div>
+                  {isScheduled && (
+                    <div className="space-y-1">
+                      <Input
+                        id="scheduledAt"
+                        name="scheduledAt"
+                        type="datetime-local"
+                        value={mode === 'single' ? single.scheduledAt : bulk.scheduledAt}
+                        onChange={(e) => handleChange(e, mode === 'bulk')}
+                        min={getMinDateTime()}
+                        required={isScheduled}
+                      />
+                      <div className="space-y-1">
+                        <p className="text-xs text-muted-foreground">
+                          Email will be sent at the specified time ({formatTimeZoneDisplay()})
+                        </p>
+                        {(mode === 'single' ? single.scheduledAt : bulk.scheduledAt) && (
+                          <p className="text-xs text-muted-foreground">
+                            UTC time: {new Date(mode === 'single' ? single.scheduledAt : bulk.scheduledAt).toISOString().replace('T', ' ').slice(0, 19)}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="campaignId">Campaign ID (Optional)</Label>
+                  <Input
+                    id="campaignId"
+                    name="campaignId"
+                    placeholder="campaign-2024-01"
+                    value={mode === 'single' ? single.campaignId : bulk.campaignId}
+                    onChange={(e) => handleChange(e, mode === 'bulk')}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="metadata">Metadata (JSON, Optional)</Label>
+                <Textarea
+                  id="metadata"
+                  name="metadata"
+                  placeholder='{"key": "value"}'
+                  value={mode === 'single' ? single.metadata : bulk.metadata}
+                  onChange={(e) => handleChange(e, mode === 'bulk')}
+                  rows={3}
+                />
+              </div>
+            </div>
+
+            <Button type="submit" disabled={loading} className="w-full md:w-auto">
+              {isScheduled ? (
+                <Clock className="mr-2 h-4 w-4" />
+              ) : (
+                <Send className="mr-2 h-4 w-4" />
+              )}
+              {loading 
+                ? 'Processing...' 
+                : isScheduled 
+                  ? `Schedule ${mode === 'single' ? 'Email' : 'Bulk Emails'}` 
+                  : `Send ${mode === 'single' ? 'Email' : 'Bulk Emails'} Now`
+              }
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
     </div>
   );
 }

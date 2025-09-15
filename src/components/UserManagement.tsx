@@ -3,10 +3,40 @@ import { useAuth } from '../hooks/useAuth';
 import { userApiService } from '../services/userApi';
 import type {
   User,
-  UserFilters,
   UserStatusInfo,
   UserManagementState
 } from '../types/user';
+
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Skeleton } from '@/components/ui/skeleton';
+import { AlertCircle, Eye, UserX, UserCheck, Search } from 'lucide-react';
 
 const UserManagement: React.FC = () => {
   const { token } = useAuth();
@@ -168,740 +198,441 @@ const UserManagement: React.FC = () => {
     }
   };
 
-  /**
-   * Handle filter changes
-   */
-  const handleFilterChange = (newFilters: Partial<UserFilters>) => {
-    setState(prev => ({
-      ...prev,
-      filters: { ...prev.filters, ...newFilters },
-      pagination: { ...prev.pagination, page: 1 } // Reset to first page
-    }));
-  };
-
-  /**
-   * Handle pagination changes
-   */
-  const handlePageChange = (page: number) => {
-    setState(prev => ({
-      ...prev,
-      pagination: { ...prev.pagination, page }
-    }));
-  };
-
-  /**
-   * Handle page size changes
-   */
-  const handlePageSizeChange = (limit: number) => {
-    setState(prev => ({
-      ...prev,
-      pagination: { ...prev.pagination, limit, page: 1 }
-    }));
-  };
-
-  /**
-   * Open deactivation modal
-   */
-  const openDeactivationModal = (user: User) => {
-    setState(prev => ({
-      ...prev,
-      selectedUser: user,
-      showDeactivationModal: true
-    }));
-  };
-
-  /**
-   * Open reactivation modal
-   */
-  const openReactivationModal = (user: User) => {
-    setState(prev => ({
-      ...prev,
-      selectedUser: user,
-      showReactivationModal: true
-    }));
-  };
-
-  /**
-   * Open user details modal
-   */
-  const openUserDetailsModal = (user: User) => {
-    setState(prev => ({
-      ...prev,
-      selectedUser: user,
-      showUserDetailsModal: true
-    }));
-  };
-
-  /**
-   * Close all modals
-   */
-  const closeModals = () => {
-    setState(prev => ({
-      ...prev,
-      selectedUser: null,
-      showDeactivationModal: false,
-      showReactivationModal: false,
-      showUserDetailsModal: false
-    }));
-    setDeactivationReason('');
-  };
-
-  // Load users when component mounts or dependencies change
+  // Load users on component mount and when dependencies change
   useEffect(() => {
-    if (token) {
-      loadUsers();
-    }
-  }, [token, loadUsers]);
+    loadUsers();
+  }, [loadUsers]);
+
+  const renderStatusBadge = (user: User) => {
+    const status = getUserStatus(user);
+    return (
+      <Badge 
+        variant="secondary"
+        style={{ 
+          backgroundColor: status.backgroundColor, 
+          color: status.color 
+        }}
+      >
+        {status.label}
+      </Badge>
+    );
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
 
   return (
-    <div style={{ padding: '20px', fontFamily: 'Arial, sans-serif' }}>
+    <div className="space-y-6">
       {/* Header */}
-      <div style={{
-        backgroundColor: 'white',
-        borderRadius: '8px',
-        boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-        padding: '20px',
-        marginBottom: '20px'
-      }}>
-        <h2 style={{ margin: '0 0 20px 0', color: '#333' }}>
-          👥 User Management
-        </h2>
-        
-        {/* Error Display */}
-        {state.error && (
-          <div style={{
-            backgroundColor: '#fee',
-            border: '1px solid #fcc',
-            borderRadius: '4px',
-            padding: '15px',
-            marginBottom: '20px',
-            color: '#c33'
-          }}>
-            {state.error}
-            <button
-              onClick={() => setState(prev => ({ ...prev, error: null }))}
-              style={{
-                float: 'right',
-                background: 'none',
-                border: 'none',
-                color: '#c33',
-                cursor: 'pointer',
-                fontSize: '16px'
-              }}
-            >
-              ×
-            </button>
-          </div>
-        )}
-
-        {/* Filters and Controls */}
-        <div style={{
-          display: 'flex',
-          flexWrap: 'wrap',
-          gap: '15px',
-          alignItems: 'center',
-          marginBottom: '20px'
-        }}>
-          {/* Search */}
-          <div style={{ flex: '1', minWidth: '200px' }}>
-            <input
-              type="text"
-              placeholder="Search by username or email..."
-              value={state.filters.search}
-              onChange={(e) => handleFilterChange({ search: e.target.value })}
-              style={{
-                width: '100%',
-                padding: '8px 12px',
-                border: '1px solid #ddd',
-                borderRadius: '4px',
-                boxSizing: 'border-box'
-              }}
-            />
-          </div>
-
-          {/* Verification Filter */}
-          <div>
-            <select
-              value={state.filters.verified === null ? '' : state.filters.verified.toString()}
-              onChange={(e) => handleFilterChange({ 
-                verified: e.target.value === '' ? null : e.target.value === 'true' 
-              })}
-              style={{
-                padding: '8px 12px',
-                border: '1px solid #ddd',
-                borderRadius: '4px'
-              }}
-            >
-              <option value="">All Verification</option>
-              <option value="true">Verified</option>
-              <option value="false">Unverified</option>
-            </select>
-          </div>
-
-          {/* Active Filter */}
-          <div>
-            <select
-              value={state.filters.active === null ? '' : state.filters.active.toString()}
-              onChange={(e) => handleFilterChange({ 
-                active: e.target.value === '' ? null : e.target.value === 'true' 
-              })}
-              style={{
-                padding: '8px 12px',
-                border: '1px solid #ddd',
-                borderRadius: '4px'
-              }}
-            >
-              <option value="">All Status</option>
-              <option value="true">Active</option>
-              <option value="false">Inactive</option>
-            </select>
-          </div>
-
-          {/* Refresh Button */}
-          <button
-            onClick={loadUsers}
-            disabled={state.loading}
-            style={{
-              backgroundColor: '#007bff',
-              color: 'white',
-              border: 'none',
-              padding: '8px 16px',
-              borderRadius: '4px',
-              cursor: state.loading ? 'not-allowed' : 'pointer'
-            }}
-          >
-            {state.loading ? 'Loading...' : 'Refresh'}
-          </button>
-        </div>
-
-        {/* Page Size Selector */}
-        <div style={{ marginBottom: '20px' }}>
-          <label style={{ marginRight: '10px' }}>Show:</label>
-          <select
-            value={state.pagination.limit}
-            onChange={(e) => handlePageSizeChange(parseInt(e.target.value))}
-            style={{
-              padding: '4px 8px',
-              border: '1px solid #ddd',
-              borderRadius: '4px'
-            }}
-          >
-            <option value={10}>10</option>
-            <option value={25}>25</option>
-            <option value={50}>50</option>
-            <option value={100}>100</option>
-          </select>
-          <span style={{ marginLeft: '10px', color: '#666' }}>
-            users per page
-          </span>
-        </div>
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight">User Management</h1>
+        <p className="text-muted-foreground">
+          Manage hackathon participants and their accounts
+        </p>
       </div>
 
-      {/* Users Table */}
-      <div style={{
-        backgroundColor: 'white',
-        borderRadius: '8px',
-        boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-        overflow: 'hidden'
-      }}>
-        {state.loading && state.users.length === 0 ? (
-          <div style={{ padding: '40px', textAlign: 'center' }}>
-            <div style={{ fontSize: '32px', marginBottom: '10px' }}>🔄</div>
-            <p>Loading users...</p>
-          </div>
-        ) : state.users.length === 0 ? (
-          <div style={{ padding: '40px', textAlign: 'center' }}>
-            <div style={{ fontSize: '32px', marginBottom: '10px' }}>👤</div>
-            <p>No users found.</p>
-          </div>
-        ) : (
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead>
-                <tr style={{ backgroundColor: '#f8f9fa' }}>
-                  <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #dee2e6' }}>
-                    User Info
-                  </th>
-                  <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #dee2e6' }}>
-                    Contact
-                  </th>
-                  <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #dee2e6' }}>
-                    Registration
-                  </th>
-                  <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #dee2e6' }}>
-                    Status
-                  </th>
-                  <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #dee2e6' }}>
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {state.users.map((user) => {
-                  const statusInfo = getUserStatus(user);
-                  return (
-                    <tr key={user.id} style={{ borderBottom: '1px solid #dee2e6' }}>
-                      {/* User Info */}
-                      <td style={{ padding: '12px' }}>
-                        <div>
-                          <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>
-                            {user.fullName}
-                          </div>
-                          <div style={{ color: '#666', fontSize: '14px' }}>
-                            @{user.username}
-                          </div>
-                          <div style={{ color: '#666', fontSize: '12px', marginTop: '2px' }}>
-                            ID: {user.id.substring(0, 8)}...
-                          </div>
-                        </div>
-                      </td>
-
-                      {/* Contact */}
-                      <td style={{ padding: '12px' }}>
-                        <div style={{ marginBottom: '4px' }}>
-                          {user.email}
-                        </div>
-                        <div style={{ color: '#666', fontSize: '14px' }}>
-                          {user.phoneNumber}
-                        </div>
-                        <div style={{ color: '#666', fontSize: '12px', marginTop: '2px' }}>
-                          {user.college}
-                        </div>
-                      </td>
-
-                      {/* Registration */}
-                      <td style={{ padding: '12px' }}>
-                        <div style={{ marginBottom: '4px' }}>
-                          <span style={{
-                            backgroundColor: user.stepOneComplete ? '#d4edda' : '#f8d7da',
-                            color: user.stepOneComplete ? '#155724' : '#721c24',
-                            padding: '2px 6px',
-                            borderRadius: '4px',
-                            fontSize: '12px',
-                            marginRight: '4px'
-                          }}>
-                            Step 1
-                          </span>
-                          <span style={{
-                            backgroundColor: user.stepTwoComplete ? '#d4edda' : '#f8d7da',
-                            color: user.stepTwoComplete ? '#155724' : '#721c24',
-                            padding: '2px 6px',
-                            borderRadius: '4px',
-                            fontSize: '12px'
-                          }}>
-                            Step 2
-                          </span>
-                        </div>
-                        <div style={{ color: '#666', fontSize: '12px' }}>
-                          {new Date(user.createdAt).toLocaleDateString()}
-                        </div>
-                      </td>
-
-                      {/* Status */}
-                      <td style={{ padding: '12px' }}>
-                        <span style={{
-                          backgroundColor: statusInfo.backgroundColor,
-                          color: statusInfo.color,
-                          padding: '4px 8px',
-                          borderRadius: '4px',
-                          fontSize: '12px',
-                          fontWeight: 'bold'
-                        }}>
-                          {statusInfo.label}
-                        </span>
-                        {user.isVerified && (
-                          <div style={{ 
-                            color: '#28a745', 
-                            fontSize: '12px', 
-                            marginTop: '2px' 
-                          }}>
-                            ✓ Email Verified
-                          </div>
-                        )}
-                      </td>
-
-                      {/* Actions */}
-                      <td style={{ padding: '12px' }}>
-                        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                          <button
-                            onClick={() => openUserDetailsModal(user)}
-                            style={{
-                              backgroundColor: '#17a2b8',
-                              color: 'white',
-                              border: 'none',
-                              padding: '4px 8px',
-                              borderRadius: '4px',
-                              cursor: 'pointer',
-                              fontSize: '12px'
-                            }}
-                          >
-                            View
-                          </button>
-                          
-                          {user.isActive ? (
-                            <button
-                              onClick={() => openDeactivationModal(user)}
-                              disabled={state.loading}
-                              style={{
-                                backgroundColor: '#dc3545',
-                                color: 'white',
-                                border: 'none',
-                                padding: '4px 8px',
-                                borderRadius: '4px',
-                                cursor: state.loading ? 'not-allowed' : 'pointer',
-                                fontSize: '12px'
-                              }}
-                            >
-                              Deactivate
-                            </button>
-                          ) : (
-                            <button
-                              onClick={() => openReactivationModal(user)}
-                              disabled={state.loading}
-                              style={{
-                                backgroundColor: '#28a745',
-                                color: 'white',
-                                border: 'none',
-                                padding: '4px 8px',
-                                borderRadius: '4px',
-                                cursor: state.loading ? 'not-allowed' : 'pointer',
-                                fontSize: '12px'
-                              }}
-                            >
-                              Reactivate
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-
-        {/* Pagination */}
-        {state.pagination.totalPages > 1 && (
-          <div style={{
-            padding: '20px',
-            borderTop: '1px solid #dee2e6',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center'
-          }}>
-            <div style={{ color: '#666' }}>
-              Showing {((state.pagination.page - 1) * state.pagination.limit) + 1} to{' '}
-              {Math.min(state.pagination.page * state.pagination.limit, state.pagination.total)} of{' '}
-              {state.pagination.total} users
+      {/* Filters */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Filters</CardTitle>
+          <CardDescription>
+            Filter users by status and search criteria
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="search">Search</Label>
+              <div className="relative">
+                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="search"
+                  placeholder="Search by name or email..."
+                  value={state.filters.search}
+                  onChange={(e) => setState(prev => ({
+                    ...prev,
+                    filters: { ...prev.filters, search: e.target.value }
+                  }))}
+                  className="pl-8"
+                />
+              </div>
             </div>
-            
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <button
-                onClick={() => handlePageChange(state.pagination.page - 1)}
-                disabled={state.pagination.page <= 1 || state.loading}
-                style={{
-                  padding: '8px 12px',
-                  border: '1px solid #ddd',
-                  borderRadius: '4px',
-                  backgroundColor: 'white',
-                  cursor: (state.pagination.page <= 1 || state.loading) ? 'not-allowed' : 'pointer'
-                }}
+
+            <div className="space-y-2">
+              <Label htmlFor="verified">Verification Status</Label>
+              <Select
+                value={state.filters.verified === null ? "all" : state.filters.verified.toString()}
+                onValueChange={(value) => setState(prev => ({
+                  ...prev,
+                  filters: { 
+                    ...prev.filters, 
+                    verified: value === "all" ? null : value === "true"
+                  }
+                }))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="All" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All</SelectItem>
+                  <SelectItem value="true">Verified</SelectItem>
+                  <SelectItem value="false">Unverified</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="active">Account Status</Label>
+              <Select
+                value={state.filters.active === null ? "all" : state.filters.active.toString()}
+                onValueChange={(value) => setState(prev => ({
+                  ...prev,
+                  filters: { 
+                    ...prev.filters, 
+                    active: value === "all" ? null : value === "true"
+                  }
+                }))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="All" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All</SelectItem>
+                  <SelectItem value="true">Active</SelectItem>
+                  <SelectItem value="false">Inactive</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="flex gap-2 mt-4">
+            <Button onClick={loadUsers} disabled={state.loading}>
+              {state.loading ? "Loading..." : "Apply Filters"}
+            </Button>
+            <Button 
+              variant="outline"
+              onClick={() => setState(prev => ({
+                ...prev,
+                filters: { verified: null, active: null, search: '' }
+              }))}
+            >
+              Clear Filters
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Error Display */}
+      {state.error && (
+        <div className="flex items-center gap-2 p-4 text-red-600 bg-red-50 border border-red-200 rounded-md">
+          <AlertCircle className="h-4 w-4" />
+          <span>{state.error}</span>
+        </div>
+      )}
+
+      {/* Users Table */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Users ({state.pagination.total})</CardTitle>
+          <CardDescription>
+            Page {state.pagination.page} of {state.pagination.totalPages}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {state.loading ? (
+            <div className="space-y-2">
+              {[...Array(5)].map((_, i) => (
+                <Skeleton key={i} className="h-12 w-full" />
+              ))}
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Registration</TableHead>
+                  <TableHead>Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {state.users.map((user) => (
+                  <TableRow key={user.id}>
+                    <TableCell className="font-medium">
+                      {user.fullName}
+                    </TableCell>
+                    <TableCell>{user.email}</TableCell>
+                    <TableCell>{renderStatusBadge(user)}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {formatDate(user.createdAt)}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setState(prev => ({
+                            ...prev,
+                            selectedUser: user,
+                            showUserDetailsModal: true
+                          }))}
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        
+                        {user.isActive ? (
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => setState(prev => ({
+                              ...prev,
+                              selectedUser: user,
+                              showDeactivationModal: true
+                            }))}
+                          >
+                            <UserX className="h-4 w-4" />
+                          </Button>
+                        ) : (
+                          <Button
+                            size="sm"
+                            variant="default"
+                            onClick={() => setState(prev => ({
+                              ...prev,
+                              selectedUser: user,
+                              showReactivationModal: true
+                            }))}
+                          >
+                            <UserCheck className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+
+          {/* Pagination */}
+          {state.pagination.totalPages > 1 && (
+            <div className="flex items-center justify-between mt-4">
+              <Button
+                variant="outline"
+                disabled={state.pagination.page === 1}
+                onClick={() => setState(prev => ({
+                  ...prev,
+                  pagination: { ...prev.pagination, page: prev.pagination.page - 1 }
+                }))}
               >
                 Previous
-              </button>
+              </Button>
               
-              <span style={{ 
-                padding: '8px 12px',
-                border: '1px solid #ddd',
-                borderRadius: '4px',
-                backgroundColor: '#f8f9fa'
-              }}>
+              <span className="text-sm text-muted-foreground">
                 Page {state.pagination.page} of {state.pagination.totalPages}
               </span>
               
-              <button
-                onClick={() => handlePageChange(state.pagination.page + 1)}
-                disabled={state.pagination.page >= state.pagination.totalPages || state.loading}
-                style={{
-                  padding: '8px 12px',
-                  border: '1px solid #ddd',
-                  borderRadius: '4px',
-                  backgroundColor: 'white',
-                  cursor: (state.pagination.page >= state.pagination.totalPages || state.loading) ? 'not-allowed' : 'pointer'
-                }}
+              <Button
+                variant="outline"
+                disabled={state.pagination.page === state.pagination.totalPages}
+                onClick={() => setState(prev => ({
+                  ...prev,
+                  pagination: { ...prev.pagination, page: prev.pagination.page + 1 }
+                }))}
               >
                 Next
-              </button>
+              </Button>
             </div>
-          </div>
-        )}
-      </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Deactivation Modal */}
-      {state.showDeactivationModal && state.selectedUser && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: 'rgba(0,0,0,0.5)',
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          zIndex: 1000
-        }}>
-          <div style={{
-            backgroundColor: 'white',
-            borderRadius: '8px',
-            padding: '24px',
-            maxWidth: '500px',
-            width: '90%'
-          }}>
-            <h3 style={{ margin: '0 0 16px 0', color: '#dc3545' }}>
-              Deactivate User Account
-            </h3>
-            <p style={{ margin: '0 0 16px 0' }}>
-              Are you sure you want to deactivate the account for{' '}
-              <strong>{state.selectedUser.fullName}</strong> (@{state.selectedUser.username})?
-            </p>
-            <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>
-                Reason (optional):
-              </label>
-              <textarea
-                value={deactivationReason}
-                onChange={(e) => setDeactivationReason(e.target.value)}
-                placeholder="Enter reason for deactivation..."
-                rows={3}
-                style={{
-                  width: '100%',
-                  padding: '8px',
-                  border: '1px solid #ddd',
-                  borderRadius: '4px',
-                  boxSizing: 'border-box',
-                  resize: 'vertical'
-                }}
-              />
-            </div>
-            <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
-              <button
-                onClick={closeModals}
-                disabled={state.loading}
-                style={{
-                  padding: '8px 16px',
-                  border: '1px solid #ddd',
-                  borderRadius: '4px',
-                  backgroundColor: 'white',
-                  cursor: state.loading ? 'not-allowed' : 'pointer'
-                }}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleDeactivateUser}
-                disabled={state.loading}
-                style={{
-                  padding: '8px 16px',
-                  border: 'none',
-                  borderRadius: '4px',
-                  backgroundColor: '#dc3545',
-                  color: 'white',
-                  cursor: state.loading ? 'not-allowed' : 'pointer'
-                }}
-              >
-                {state.loading ? 'Deactivating...' : 'Deactivate User'}
-              </button>
-            </div>
+      <Dialog 
+        open={state.showDeactivationModal} 
+        onOpenChange={(open) => setState(prev => ({ ...prev, showDeactivationModal: open }))}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Deactivate User</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to deactivate {state.selectedUser?.fullName}?
+              This action can be reversed later.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-2">
+            <Label htmlFor="reason">Reason (optional)</Label>
+            <Input
+              id="reason"
+              placeholder="Enter reason for deactivation..."
+              value={deactivationReason}
+              onChange={(e) => setDeactivationReason(e.target.value)}
+            />
           </div>
-        </div>
-      )}
+
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => setState(prev => ({ ...prev, showDeactivationModal: false }))}
+            >
+              Cancel
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={handleDeactivateUser}
+              disabled={state.loading}
+            >
+              {state.loading ? "Deactivating..." : "Deactivate"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Reactivation Modal */}
-      {state.showReactivationModal && state.selectedUser && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: 'rgba(0,0,0,0.5)',
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          zIndex: 1000
-        }}>
-          <div style={{
-            backgroundColor: 'white',
-            borderRadius: '8px',
-            padding: '24px',
-            maxWidth: '500px',
-            width: '90%'
-          }}>
-            <h3 style={{ margin: '0 0 16px 0', color: '#28a745' }}>
-              Reactivate User Account
-            </h3>
-            <p style={{ margin: '0 0 16px 0' }}>
-              Are you sure you want to reactivate the account for{' '}
-              <strong>{state.selectedUser.fullName}</strong> (@{state.selectedUser.username})?
-            </p>
-            <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
-              <button
-                onClick={closeModals}
-                disabled={state.loading}
-                style={{
-                  padding: '8px 16px',
-                  border: '1px solid #ddd',
-                  borderRadius: '4px',
-                  backgroundColor: 'white',
-                  cursor: state.loading ? 'not-allowed' : 'pointer'
-                }}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleReactivateUser}
-                disabled={state.loading}
-                style={{
-                  padding: '8px 16px',
-                  border: 'none',
-                  borderRadius: '4px',
-                  backgroundColor: '#28a745',
-                  color: 'white',
-                  cursor: state.loading ? 'not-allowed' : 'pointer'
-                }}
-              >
-                {state.loading ? 'Reactivating...' : 'Reactivate User'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <Dialog 
+        open={state.showReactivationModal} 
+        onOpenChange={(open) => setState(prev => ({ ...prev, showReactivationModal: open }))}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reactivate User</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to reactivate {state.selectedUser?.fullName}?
+            </DialogDescription>
+          </DialogHeader>
+
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => setState(prev => ({ ...prev, showReactivationModal: false }))}
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleReactivateUser}
+              disabled={state.loading}
+            >
+              {state.loading ? "Reactivating..." : "Reactivate"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* User Details Modal */}
-      {state.showUserDetailsModal && state.selectedUser && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: 'rgba(0,0,0,0.5)',
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          zIndex: 1000
-        }}>
-          <div style={{
-            backgroundColor: 'white',
-            borderRadius: '8px',
-            padding: '24px',
-            maxWidth: '600px',
-            width: '90%',
-            maxHeight: '80vh',
-            overflowY: 'auto'
-          }}>
-            <h3 style={{ margin: '0 0 20px 0', color: '#333' }}>
-              User Details
-            </h3>
-            
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+      <Dialog 
+        open={state.showUserDetailsModal} 
+        onOpenChange={(open) => setState(prev => ({ ...prev, showUserDetailsModal: open }))}
+      >
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>User Details</DialogTitle>
+            <DialogDescription>
+              Complete information for {state.selectedUser?.fullName}
+            </DialogDescription>
+          </DialogHeader>
+
+          {state.selectedUser && (
+            <div className="space-y-6">
+              {/* Basic Information */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-sm font-medium text-muted-foreground">Full Name</Label>
+                  <p className="text-sm">{state.selectedUser.fullName}</p>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium text-muted-foreground">Email</Label>
+                  <p className="text-sm">{state.selectedUser.email}</p>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium text-muted-foreground">Status</Label>
+                  <div className="mt-1">{renderStatusBadge(state.selectedUser)}</div>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium text-muted-foreground">Registration Date</Label>
+                  <p className="text-sm">{formatDate(state.selectedUser.createdAt)}</p>
+                </div>
+              </div>
+
+              {/* Registration Progress */}
               <div>
-                <label style={{ fontWeight: 'bold', color: '#666' }}>Full Name:</label>
-                <p style={{ margin: '4px 0 12px 0' }}>{state.selectedUser.fullName}</p>
+                <Label className="text-sm font-medium text-muted-foreground">Registration Progress</Label>
+                <div className="mt-2 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <div className={`w-3 h-3 rounded-full ${state.selectedUser.stepOneComplete ? 'bg-green-500' : 'bg-gray-300'}`} />
+                    <span className="text-sm">Step 1 Complete</span>
+                    {state.selectedUser.stepOneComplete && <span className="text-xs text-green-600">✓</span>}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className={`w-3 h-3 rounded-full ${state.selectedUser.stepTwoComplete ? 'bg-green-500' : 'bg-gray-300'}`} />
+                    <span className="text-sm">Step 2 Complete</span>
+                    {state.selectedUser.stepTwoComplete && <span className="text-xs text-green-600">✓</span>}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className={`w-3 h-3 rounded-full ${state.selectedUser.isVerified ? 'bg-green-500' : 'bg-gray-300'}`} />
+                    <span className="text-sm">Email Verified</span>
+                    {state.selectedUser.isVerified && <span className="text-xs text-green-600">✓</span>}
+                  </div>
+                </div>
               </div>
-              
-              <div>
-                <label style={{ fontWeight: 'bold', color: '#666' }}>Username:</label>
-                <p style={{ margin: '4px 0 12px 0' }}>@{state.selectedUser.username}</p>
+
+              {/* Account Details */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-sm font-medium text-muted-foreground">User ID</Label>
+                  <p className="text-xs font-mono bg-muted p-2 rounded">{state.selectedUser.id}</p>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium text-muted-foreground">Last Updated</Label>
+                  <p className="text-sm">{formatDate(state.selectedUser.updatedAt)}</p>
+                </div>
               </div>
-              
-              <div>
-                <label style={{ fontWeight: 'bold', color: '#666' }}>Email:</label>
-                <p style={{ margin: '4px 0 12px 0' }}>{state.selectedUser.email}</p>
-              </div>
-              
-              <div>
-                <label style={{ fontWeight: 'bold', color: '#666' }}>Phone:</label>
-                <p style={{ margin: '4px 0 12px 0' }}>{state.selectedUser.phoneNumber}</p>
-              </div>
-              
-              <div style={{ gridColumn: '1 / -1' }}>
-                <label style={{ fontWeight: 'bold', color: '#666' }}>College/Institution:</label>
-                <p style={{ margin: '4px 0 12px 0' }}>{state.selectedUser.college}</p>
-              </div>
-              
-              <div style={{ gridColumn: '1 / -1' }}>
-                <label style={{ fontWeight: 'bold', color: '#666' }}>Address:</label>
-                <p style={{ margin: '4px 0 12px 0' }}>{state.selectedUser.address}</p>
-              </div>
-              
-              <div>
-                <label style={{ fontWeight: 'bold', color: '#666' }}>Status:</label>
-                <p style={{ margin: '4px 0 12px 0' }}>
-                  <span style={{
-                    backgroundColor: getUserStatus(state.selectedUser).backgroundColor,
-                    color: getUserStatus(state.selectedUser).color,
-                    padding: '4px 8px',
-                    borderRadius: '4px',
-                    fontSize: '12px',
-                    fontWeight: 'bold'
-                  }}>
-                    {getUserStatus(state.selectedUser).label}
-                  </span>
-                </p>
-              </div>
-              
-              <div>
-                <label style={{ fontWeight: 'bold', color: '#666' }}>Registration:</label>
-                <p style={{ margin: '4px 0 12px 0' }}>
-                  {new Date(state.selectedUser.createdAt).toLocaleDateString('en-US', {
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit'
-                  })}
-                </p>
-              </div>
-              
-              <div>
-                <label style={{ fontWeight: 'bold', color: '#666' }}>User ID:</label>
-                <p style={{ 
-                  margin: '4px 0 12px 0',
-                  fontFamily: 'monospace',
-                  fontSize: '12px',
-                  wordBreak: 'break-all'
-                }}>
-                  {state.selectedUser.id}
-                </p>
+
+              {/* Additional User Information */}
+              <div className="grid grid-cols-1 gap-4">
+                <div>
+                  <Label className="text-sm font-medium text-muted-foreground">Username</Label>
+                  <p className="text-sm">{state.selectedUser.username}</p>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium text-muted-foreground">Phone Number</Label>
+                  <p className="text-sm">{state.selectedUser.phoneNumber || 'Not provided'}</p>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium text-muted-foreground">College</Label>
+                  <p className="text-sm">{state.selectedUser.college || 'Not provided'}</p>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium text-muted-foreground">Address</Label>
+                  <p className="text-sm">{state.selectedUser.address || 'Not provided'}</p>
+                </div>
+                {state.selectedUser.deletedAt && (
+                  <div>
+                    <Label className="text-sm font-medium text-muted-foreground">Deleted At</Label>
+                    <p className="text-sm text-red-600">{formatDate(state.selectedUser.deletedAt)}</p>
+                  </div>
+                )}
               </div>
             </div>
-            
-            <div style={{ 
-              marginTop: '20px',
-              paddingTop: '16px',
-              borderTop: '1px solid #dee2e6',
-              display: 'flex',
-              justifyContent: 'flex-end'
-            }}>
-              <button
-                onClick={closeModals}
-                style={{
-                  padding: '8px 16px',
-                  border: '1px solid #ddd',
-                  borderRadius: '4px',
-                  backgroundColor: 'white',
-                  cursor: 'pointer'
-                }}
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+          )}
+
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => setState(prev => ({ ...prev, showUserDetailsModal: false }))}
+            >
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
