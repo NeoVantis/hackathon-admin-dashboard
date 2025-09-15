@@ -4,7 +4,6 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { AuthProvider } from './contexts/AuthContext';
 import { ThemeProvider } from './components/layout/theme-provider';
 import ProtectedRoute from './components/auth/ProtectedRoute';
-import SendEmail from './components/notifications/SendEmail';
 import Layout from './components/layout/Layout';
 import Login from './components/auth/Login';
 
@@ -22,23 +21,16 @@ const App: React.FC = () => {
             {/* Public routes */}
             <Route path="/login" element={<Login />} />
 
-            {/* Protected routes */}
+            {/* Protected routes with nested routing */}
             <Route 
-              path="/dashboard"
+              path="/dashboard/*"
               element={
                 <ProtectedRoute>
                   <Layout />
                 </ProtectedRoute>
               }
             />
-            <Route
-              path="/send-email"
-              element={
-                <ProtectedRoute>
-                  <SendEmail />
-                </ProtectedRoute>
-              }
-            />
+
             {/* Default redirect */}
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
             {/* Catch-all redirect */}

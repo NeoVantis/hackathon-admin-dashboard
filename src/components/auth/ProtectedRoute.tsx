@@ -2,6 +2,8 @@ import React from 'react';
 import type { ReactNode } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import Login from './Login';
+import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
+import { Loader2, ShieldX } from 'lucide-react';
 
 interface ProtectedRouteProps {
   children: ReactNode;
@@ -14,48 +16,22 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   requiredRole,
   fallback
 }) => {
-  const { 
-    isAuthenticated, 
-    isLoading, 
-    admin, 
-    hasRole, 
-    isSuperAdmin 
+  const {
+    isAuthenticated,
+    isLoading,
+    admin,
+    hasRole,
+    isSuperAdmin
   } = useAuth();
 
   // Show loading spinner while checking authentication
   if (isLoading) {
     return (
-      <div style={{
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        height: '100vh',
-        backgroundColor: '#f5f5f5',
-        fontFamily: 'Arial, sans-serif'
-      }}>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{
-            fontSize: '48px',
-            marginBottom: '20px',
-            animation: 'spin 1s linear infinite'
-          }}>
-            🔄
-          </div>
-          <h2 style={{ color: '#333', margin: '0 0 10px 0' }}>
-            Authenticating...
-          </h2>
-          <p style={{ color: '#666', margin: '0' }}>
-            Please wait while we verify your credentials
-          </p>
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <p className="text-sm text-muted-foreground">Authenticating...</p>
         </div>
-        <style>
-          {`
-            @keyframes spin {
-              0% { transform: rotate(0deg); }
-              100% { transform: rotate(360deg); }
-            }
-          `}
-        </style>
       </div>
     );
   }
@@ -69,58 +45,29 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   if (requiredRole && !hasRole(requiredRole) && !isSuperAdmin()) {
     return (
       fallback || (
-        <div style={{
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          height: '100vh',
-          backgroundColor: '#f5f5f5',
-          fontFamily: 'Arial, sans-serif'
-        }}>
-          <div style={{
-            backgroundColor: 'white',
-            borderRadius: '8px',
-            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-            padding: '40px',
-            textAlign: 'center',
-            maxWidth: '500px',
-            margin: '20px'
-          }}>
-            <div style={{
-              fontSize: '64px',
-              marginBottom: '20px'
-            }}>
-              🚫
-            </div>
-            <h2 style={{
-              color: '#e74c3c',
-              margin: '0 0 15px 0',
-              fontSize: '24px'
-            }}>
-              Access Denied
-            </h2>
-            <p style={{
-              color: '#666',
-              margin: '0 0 20px 0',
-              lineHeight: '1.5'
-            }}>
-              You don't have permission to access this page.
-              <br />
-              Required role: <strong>{requiredRole}</strong>
-              <br />
-              Your role: <strong>{admin?.role || 'Unknown'}</strong>
-            </p>
-            <div style={{
-              backgroundColor: '#f8f9fa',
-              border: '1px solid #dee2e6',
-              borderRadius: '4px',
-              padding: '15px',
-              fontSize: '14px',
-              color: '#6c757d'
-            }}>
-              Contact your system administrator if you believe this is an error.
-            </div>
-          </div>
+        <div className="min-h-screen flex items-center justify-center bg-background p-4">
+          <Card className="w-full max-w-md">
+            <CardHeader className="text-center">
+              <div className="flex justify-center mb-4">
+                <ShieldX className="h-12 w-12 text-destructive" />
+              </div>
+              <CardTitle className="text-destructive">Access Denied</CardTitle>
+            </CardHeader>
+            <CardContent className="text-center space-y-4">
+              <p className="text-muted-foreground">
+                You don't have permission to access this page.
+              </p>
+              <div className="bg-muted p-3 rounded-md text-sm">
+                <div className="space-y-1">
+                  <div>Required role: <span className="font-medium">{requiredRole}</span></div>
+                  <div>Your role: <span className="font-medium">{admin?.role ?? 'Unknown'}</span></div>
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Contact your system administrator if you believe this is an error.
+              </p>
+            </CardContent>
+          </Card>
         </div>
       )
     );

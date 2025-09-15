@@ -1,4 +1,5 @@
 import * as React from "react"
+import { useLocation, useNavigate } from "react-router-dom"
 import {
   Activity,
   Bell,
@@ -21,40 +22,37 @@ import {
 } from "@/components/ui/sidebar"
 import { useAuth } from "@/hooks/useAuth"
 
-interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
-  activeTab: string;
-  onTabChange: (tab: string) => void;
-}
-
-export function AppSidebar({ activeTab, onTabChange, ...props }: AppSidebarProps) {
+export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { admin, isSuperAdmin, getRoleName } = useAuth()
+  const location = useLocation()
+  const navigate = useNavigate()
 
   // Define navigation items based on user role
   const getNavItems = () => {
     const baseItems = [
       {
         title: "User Management",
-        url: "users",
+        url: "/dashboard/users",
         icon: Users,
-        isActive: activeTab === "users",
+        isActive: location.pathname === "/dashboard/users",
       },
       {
         title: "Health Monitor",
-        url: "health",
+        url: "/dashboard/health",
         icon: Activity,
-        isActive: activeTab === "health",
+        isActive: location.pathname === "/dashboard/health",
       },
       {
         title: "Notifications",
-        url: "notifications", 
+        url: "/dashboard/notifications", 
         icon: Bell,
-        isActive: activeTab === "notifications",
+        isActive: location.pathname === "/dashboard/notifications",
       },
       {
         title: "Send Email",
-        url: "send-email",
+        url: "/dashboard/send-email",
         icon: Mail,
-        isActive: activeTab === "send-email",
+        isActive: location.pathname === "/dashboard/send-email",
       },
     ]
 
@@ -62,13 +60,17 @@ export function AppSidebar({ activeTab, onTabChange, ...props }: AppSidebarProps
     if (isSuperAdmin()) {
       baseItems.push({
         title: "Admin Management",
-        url: "admin-management",
+        url: "/dashboard/admin-management",
         icon: Shield,
-        isActive: activeTab === "admin-management",
+        isActive: location.pathname === "/dashboard/admin-management",
       })
     }
 
     return baseItems
+  }
+
+  const handleNavigation = (url: string) => {
+    navigate(url)
   }
 
   const userData = {
@@ -96,7 +98,7 @@ export function AppSidebar({ activeTab, onTabChange, ...props }: AppSidebarProps
         </SidebarMenu>
       </SidebarHeader>
       <SidebarContent>
-        <NavMain items={getNavItems()} onItemClick={onTabChange} />
+        <NavMain items={getNavItems()} onItemClick={handleNavigation} />
       </SidebarContent>
       <SidebarFooter>
         <NavUser user={userData} />

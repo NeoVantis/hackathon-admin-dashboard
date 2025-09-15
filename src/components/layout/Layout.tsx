@@ -1,7 +1,10 @@
-import React, { useState } from 'react';
+import React from 'react';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import { AppSidebar } from '@/components/sidebar/app-sidebar';
 import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar';
 import { Separator } from '@/components/ui/separator';
+
+// Import page components
 import HealthMonitor from '../health/HealthMonitor';
 import NotificationsTable from '../notifications/NotificationsTable';
 import UserManagement from '../user/UserManagement';
@@ -9,37 +12,9 @@ import AdminManagement from '../admin/AdminManagement';
 import SendEmail from '../notifications/SendEmail';
 
 const Layout: React.FC = () => {
-  const [activeTab, setActiveTab] = useState('health');
-
-  const renderContent = () => {
-    switch (activeTab) {
-      case 'health':
-        return <HealthMonitor />;
-      case 'notifications':
-        return <NotificationsTable />;
-      case 'users':
-        return <UserManagement />;
-      case 'admin-management':
-        return <AdminManagement />;
-      case 'send-email':
-        return <SendEmail />;
-      default:
-        return (
-          <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
-            <div className="grid auto-rows-min gap-4 md:grid-cols-3">
-              <div className="aspect-video rounded-xl bg-muted/50" />
-              <div className="aspect-video rounded-xl bg-muted/50" />
-              <div className="aspect-video rounded-xl bg-muted/50" />
-            </div>
-            <div className="min-h-[100vh] flex-1 rounded-xl bg-muted/50 md:min-h-min" />
-          </div>
-        );
-    }
-  };
-
   return (
     <SidebarProvider>
-      <AppSidebar activeTab={activeTab} onTabChange={setActiveTab} />
+      <AppSidebar />
       <SidebarInset>
         <header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-[[data-collapsible=icon]]/sidebar-wrapper:h-12">
           <div className="flex items-center gap-2 px-4">
@@ -48,7 +23,17 @@ const Layout: React.FC = () => {
           </div>
         </header>
         <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
-          {renderContent()}
+          <Routes>
+            {/* Default route */}
+            <Route path="/" element={<Navigate to="/dashboard/health" replace />} />
+
+            {/* Page routes */}
+            <Route path="/health" element={<HealthMonitor />} />
+            <Route path="/notifications" element={<NotificationsTable />} />
+            <Route path="/users" element={<UserManagement />} />
+            <Route path="/admin-management" element={<AdminManagement />} />
+            <Route path="/send-email" element={<SendEmail />} />
+          </Routes>
         </div>
       </SidebarInset>
     </SidebarProvider>
