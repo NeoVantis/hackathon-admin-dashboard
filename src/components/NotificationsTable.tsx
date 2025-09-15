@@ -40,7 +40,7 @@ interface Notification {
   sentAt: string | null;
 }
 
-const NotificationsChart: React.FC = () => {
+const NotificationsTable: React.FC = () => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -544,4 +544,4 @@ const NotificationsChart: React.FC = () => {
   );
 };
 
-export default NotificationsChart;
+export default NotificationsTable;

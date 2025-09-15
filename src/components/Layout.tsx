@@ -3,7 +3,7 @@ import { AppSidebar } from '@/components/app-sidebar';
 import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar';
 import { Separator } from '@/components/ui/separator';
 import HealthMonitor from './HealthMonitor';
-import NotificationsChart from './NotificationsChart';
+import NotificationsTable from './NotificationsTable';
 import UserManagement from './UserManagement';
 import AdminManagement from './AdminManagement';
 import SendEmail from './SendEmail';
@@ -16,7 +16,7 @@ const Layout: React.FC = () => {
       case 'health':
         return <HealthMonitor />;
       case 'notifications':
-        return <NotificationsChart />;
+        return <NotificationsTable />;
       case 'users':
         return <UserManagement />;
       case 'admin-management':
