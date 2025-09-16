@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useAuth } from '../hooks/useAuth';
-import { authApiService } from '../services/authApi';
-import type { Admin } from '../contexts/AuthContextDefinition';
-import type { CreateAdminRequest } from '../services/authApi';
+import { useAuth } from '../../hooks/useAuth';
+import { authApiService } from '../../services/authApi';
+import type { Admin } from '../../contexts/AuthContextDefinition';
+import type { CreateAdminRequest } from '../../services/authApi';
 
-const UserManagement: React.FC = () => {
+const AdminManagement: React.FC = () => {
   const { isSuperAdmin, token, getRoleName } = useAuth();
   const [admins, setAdmins] = useState<Admin[]>([]);
   const [loading, setLoading] = useState(false);
@@ -317,4 +317,4 @@ const UserManagement: React.FC = () => {
   );
 };
 
-export default UserManagement;
+export default AdminManagement;
